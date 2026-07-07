@@ -3,90 +3,205 @@ import 'package:path/path.dart';
 import 'models.dart';
 
 class DBHelper {
-  static Future<Database> initDB() async {
-    String path = join(await getDatabasesPath(), 'utility_todo.db');
-    return openDatabase(path, version: 4, onCreate: (db, version) async {
-      await db.execute("CREATE TABLE tasks(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, category TEXT, urgency TEXT, deadline TEXT, isRepeating INTEGER, repeatType TEXT, isCompleted INTEGER)");
-      await db.execute("CREATE TABLE notes(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, content TEXT, category TEXT, urgency TEXT, deadline TEXT, isRepeating INTEGER, repeatType TEXT, noteType TEXT, attachmentPath TEXT)");
-      await db.execute("CREATE TABLE categories(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE)");
-      await db.execute("CREATE TABLE urgencies(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE)");
-      // seed defaults
-      final defaultCats = ['Work', 'Study', 'Research', 'Entertainment'];
-      for (var c in defaultCats) {
-        await db.insert('categories', {'name': c});
-      }
-      final defaultUrg = ['Today', 'Urgent', 'Not Urgent', 'Long Term'];
-      for (var u in defaultUrg) {
-        await db.insert('urgencies', {'name': u});
-      }
-    }, onUpgrade: (db, oldVersion, newVersion) async {
-      if (oldVersion < 2) {
-        try {
-          await db.execute("ALTER TABLE notes ADD COLUMN category TEXT");
-        } catch (_) {}
-        try {
-          await db.execute("ALTER TABLE notes ADD COLUMN urgency TEXT");
-        } catch (_) {}
-        try {
-          await db.execute("ALTER TABLE notes ADD COLUMN deadline TEXT");
-        } catch (_) {}
-        try {
-          await db.execute("ALTER TABLE notes ADD COLUMN isRepeating INTEGER");
-        } catch (_) {}
-        try {
-          await db.execute("ALTER TABLE notes ADD COLUMN repeatType TEXT");
-        } catch (_) {}
-      }
-      if (oldVersion < 3) {
-        try {
-          await db.execute("CREATE TABLE categories(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE)");
-        } catch (_) {}
-        try {
-          await db.execute("CREATE TABLE urgencies(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE)");
-        } catch (_) {}
-        // seed defaults if tables just created
-        final defaultCats = ['Work', 'Study', 'Research', 'Entertainment'];
-        for (var c in defaultCats) {
-          try { await db.insert('categories', {'name': c}); } catch (_) {}
-        }
-        final defaultUrg = ['Today', 'Urgent', 'Not Urgent', 'Long Term'];
-        for (var u in defaultUrg) {
-          try { await db.insert('urgencies', {'name': u}); } catch (_) {}
-        }
-      }
-      if (oldVersion < 4) {
-        try { await db.execute("ALTER TABLE notes ADD COLUMN noteType TEXT"); } catch (_) {}
-        try { await db.execute("ALTER TABLE notes ADD COLUMN attachmentPath TEXT"); } catch (_) {}
-      }
-    });
+  static Future<void> updateUrgencyWeight(String name, int newWeight) async {
+    final db = await initDB();
+    await db.update(
+      'urgencies',
+      {'weight': newWeight},
+      where: 'name = ?',
+      whereArgs: [name],
+    );
   }
 
-  // Categories / Urgencies helpers
+  static Future<Database> initDB() async {
+    String path = join(await getDatabasesPath(), 'utility_todo.db');
+    return openDatabase(
+      path,
+      version: 7,
+      onCreate: (db, version) async {
+        await db.execute(
+          "CREATE TABLE tasks(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, category TEXT, subcategory TEXT, urgency TEXT, deadline TEXT, isRepeating INTEGER, repeatType TEXT, isCompleted INTEGER, syncToCalendar INTEGER, setNotification INTEGER, setAlarm INTEGER)",
+        );
+        await db.execute(
+          "CREATE TABLE notes(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, content TEXT, category TEXT, urgency TEXT, deadline TEXT, isRepeating INTEGER, repeatType TEXT, noteType TEXT, attachmentPath TEXT)",
+        );
+        await db.execute(
+          "CREATE TABLE categories(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE)",
+        );
+        await db.execute(
+          "CREATE TABLE urgencies(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, weight INTEGER)",
+        );
+        await db.execute(
+          "CREATE TABLE subcategories(id INTEGER PRIMARY KEY AUTOINCREMENT, category_name TEXT, name TEXT, UNIQUE(category_name, name))",
+        );
+
+        final defaultCats = ['Work', 'Study', 'Research', 'Entertainment'];
+        for (var c in defaultCats) {
+          await db.insert('categories', {'name': c});
+        }
+
+        final defaultSubs = {
+          'Work': ['Coding', 'Meetings', 'Emails', 'Documentation'],
+          'Study': ['Math', 'Science', 'History', 'Coding Practice'],
+          'Research': ['Market Trends', 'Tech Stack Eval'],
+          'Entertainment': ['Movies', 'Gaming', 'Reading', 'Gym'],
+        };
+        defaultSubs.forEach((cat, subs) async {
+          for (var sub in subs) {
+            await db.insert('subcategories', {
+              'category_name': cat,
+              'name': sub,
+            });
+          }
+        });
+
+        final defaultUrg = ['Today', 'Urgent', 'Not Urgent', 'Long Term'];
+        for (int i = 0; i < defaultUrg.length; i++) {
+          await db.insert('urgencies', {'name': defaultUrg[i], 'weight': i});
+        }
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 6) {
+          try {
+            await db.execute(
+              "CREATE TABLE subcategories(id INTEGER PRIMARY KEY AUTOINCREMENT, category_name TEXT, name TEXT, UNIQUE(category_name, name))",
+            );
+            final defaultSubs = {
+              'Work': ['Coding', 'Meetings', 'Emails', 'Documentation'],
+              'Study': ['Math', 'Science', 'History', 'Coding Practice'],
+              'Research': ['Market Trends', 'Tech Stack Eval'],
+              'Entertainment': ['Movies', 'Gaming', 'Reading', 'Gym'],
+            };
+            defaultSubs.forEach((cat, subs) async {
+              for (var sub in subs) {
+                try {
+                  await db.insert('subcategories', {
+                    'category_name': cat,
+                    'name': sub,
+                  });
+                } catch (_) {}
+              }
+            });
+          } catch (_) {}
+        }
+        if (oldVersion < 7) {
+          try {
+            await db.execute(
+              "ALTER TABLE urgencies ADD COLUMN weight INTEGER DEFAULT 99",
+            );
+          } catch (_) {}
+          final defaultUrg = ['Today', 'Urgent', 'Not Urgent', 'Long Term'];
+          for (int i = 0; i < defaultUrg.length; i++) {
+            try {
+              await db.update(
+                'urgencies',
+                {'weight': i},
+                where: 'name = ?',
+                whereArgs: [defaultUrg[i]],
+              );
+            } catch (_) {}
+          }
+        }
+      },
+    );
+  }
+
   static Future<List<String>> getCategories() async {
     final db = await initDB();
-    final List<Map<String, dynamic>> maps = await db.query('categories', orderBy: 'name ASC');
+    final List<Map<String, dynamic>> maps = await db.query(
+      'categories',
+      orderBy: 'name ASC',
+    );
     return maps.map((m) => m['name'] as String).toList();
+  }
+
+  static Future<List<String>> getSubcategories(String categoryName) async {
+    final db = await initDB();
+    final List<Map<String, dynamic>> maps = await db.query(
+      'subcategories',
+      where: 'category_name = ?',
+      whereArgs: [categoryName],
+      orderBy: 'name ASC',
+    );
+    return maps.map((m) => m['name'] as String).toList();
+  }
+
+  // Fetches urgencies ordered strictly by their priority weight index
+  static Future<List<Map<String, dynamic>>> getRawUrgencies() async {
+    final db = await initDB();
+    return await db.query('urgencies', orderBy: 'weight ASC');
   }
 
   static Future<List<String>> getUrgencies() async {
     final db = await initDB();
-    final List<Map<String, dynamic>> maps = await db.query('urgencies', orderBy: 'id ASC');
+    final List<Map<String, dynamic>> maps = await db.query(
+      'urgencies',
+      orderBy: 'weight ASC',
+    );
     return maps.map((m) => m['name'] as String).toList();
+  }
+
+  static Future<int> getUrgencyWeight(String name) async {
+    final db = await initDB();
+    final List<Map<String, dynamic>> maps = await db.query(
+      'urgencies',
+      where: 'name = ?',
+      whereArgs: [name],
+    );
+    if (maps.isNotEmpty && maps.first['weight'] != null) {
+      return maps.first['weight'] as int;
+    }
+    return 99;
   }
 
   static Future<int> insertCategory(String name) async {
     final db = await initDB();
-    return await db.insert('categories', {'name': name}, conflictAlgorithm: ConflictAlgorithm.ignore);
+    return await db.insert('categories', {
+      'name': name,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
   }
 
-  static Future<int> insertUrgency(String name) async {
+  static Future<int> insertSubcategory(String categoryName, String name) async {
     final db = await initDB();
-    return await db.insert('urgencies', {'name': name}, conflictAlgorithm: ConflictAlgorithm.ignore);
+    return await db.insert('subcategories', {
+      'category_name': categoryName,
+      'name': name,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
+  }
+
+  static Future<int> insertUrgency(String name, int weight) async {
+    final db = await initDB();
+    // Shift weights down to carve space for custom placement values
+    await db.execute(
+      "UPDATE urgencies SET weight = weight + 1 WHERE weight >= ?",
+      [weight],
+    );
+    return await db.insert('urgencies', {
+      'name': name,
+      'weight': weight,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
   }
 
   static Future<void> deleteCategory(String name) async {
     final db = await initDB();
     await db.delete('categories', where: 'name = ?', whereArgs: [name]);
+    await db.delete(
+      'subcategories',
+      where: 'category_name = ?',
+      whereArgs: [name],
+    );
+  }
+
+  static Future<void> deleteSubcategory(
+    String categoryName,
+    String name,
+  ) async {
+    final db = await initDB();
+    await db.delete(
+      'subcategories',
+      where: 'category_name = ? AND name = ?',
+      whereArgs: [categoryName, name],
+    );
   }
 
   static Future<void> deleteUrgency(String name) async {
@@ -101,23 +216,38 @@ class DBHelper {
 
   static Future<List<Task>> getTasks() async {
     final db = await initDB();
-    final List<Map<String, dynamic>> maps = await db.query('tasks', orderBy: "isCompleted ASC");
-    return List.generate(maps.length, (i) => Task(
-      id: maps[i]['id'], 
-      title: maps[i]['title'], 
-      description: maps[i]['description'] ?? '', 
-      category: maps[i]['category'],
-      urgency: maps[i]['urgency'], 
-      deadline: (maps[i]['deadline'] == null || (maps[i]['deadline'] is String && maps[i]['deadline'].toString().trim().isEmpty)) ? null : maps[i]['deadline'],
-      isRepeating: maps[i]['isRepeating'], 
-      repeatType: maps[i]['repeatType'],
-      isCompleted: maps[i]['isCompleted'],
-    ));
+    final List<Map<String, dynamic>> maps = await db.query(
+      'tasks',
+      orderBy: "isCompleted ASC",
+    );
+    return List.generate(
+      maps.length,
+      (i) => Task(
+        id: maps[i]['id'],
+        title: maps[i]['title'],
+        description: maps[i]['description'] ?? '',
+        category: maps[i]['category'],
+        subcategory: maps[i]['subcategory'] ?? '',
+        urgency: maps[i]['urgency'],
+        deadline: maps[i]['deadline'],
+        isRepeating: maps[i]['isRepeating'],
+        repeatType: maps[i]['repeatType'],
+        isCompleted: maps[i]['isCompleted'],
+        syncToCalendar: maps[i]['syncToCalendar'] ?? 0,
+        setNotification: maps[i]['setNotification'] ?? 0,
+        setAlarm: maps[i]['setAlarm'] ?? 0,
+      ),
+    );
   }
 
   static Future<void> updateTask(Task task) async {
     final db = await initDB();
-    await db.update('tasks', task.toMap(), where: 'id = ?', whereArgs: [task.id]);
+    await db.update(
+      'tasks',
+      task.toMap(),
+      where: 'id = ?',
+      whereArgs: [task.id],
+    );
   }
 
   static Future<void> deleteTask(int id) async {
@@ -133,23 +263,41 @@ class DBHelper {
   static Future<List<Note>> getNotes() async {
     final db = await initDB();
     final List<Map<String, dynamic>> maps = await db.query('notes');
-    return List.generate(maps.length, (i) => Note(
-          id: maps[i]['id'],
-          title: maps[i]['title'],
-          content: maps[i]['content'] ?? '',
-          category: maps[i]['category'] ?? 'Study',
-          urgency: maps[i]['urgency'] ?? 'Today',
-          deadline: (maps[i]['deadline'] == null || (maps[i]['deadline'] is String && maps[i]['deadline'].toString().trim().isEmpty)) ? null : maps[i]['deadline'],
-          isRepeating: maps[i]['isRepeating'] ?? 0,
-          repeatType: maps[i]['repeatType'] ?? 'None',
-          noteType: maps[i]['noteType'] ?? 'text',
-          attachmentPath: (maps[i]['attachmentPath'] == null || (maps[i]['attachmentPath'] is String && maps[i]['attachmentPath'].toString().trim().isEmpty)) ? null : maps[i]['attachmentPath'],
-        ));
+    return List.generate(
+      maps.length,
+      (i) => Note(
+        id: maps[i]['id'],
+        title: maps[i]['title'],
+        content: maps[i]['content'] ?? '',
+        category: maps[i]['category'] ?? 'Study',
+        urgency: maps[i]['urgency'] ?? 'Today',
+        deadline:
+            (maps[i]['deadline'] == null ||
+                (maps[i]['deadline'] is String &&
+                    maps[i]['deadline'].toString().trim().isEmpty))
+            ? null
+            : maps[i]['deadline'],
+        isRepeating: maps[i]['isRepeating'] ?? 0,
+        repeatType: maps[i]['repeatType'] ?? 'None',
+        noteType: maps[i]['noteType'] ?? 'text',
+        attachmentPath:
+            (maps[i]['attachmentPath'] == null ||
+                (maps[i]['attachmentPath'] is String &&
+                    maps[i]['attachmentPath'].toString().trim().isEmpty))
+            ? null
+            : maps[i]['attachmentPath'],
+      ),
+    );
   }
 
   static Future<void> updateNote(Note note) async {
     final db = await initDB();
-    await db.update('notes', note.toMap(), where: 'id = ?', whereArgs: [note.id]);
+    await db.update(
+      'notes',
+      note.toMap(),
+      where: 'id = ?',
+      whereArgs: [note.id],
+    );
   }
 
   static Future<void> deleteNote(int id) async {

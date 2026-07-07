@@ -3,22 +3,30 @@ class Task {
   String title;
   String description;
   String category;
+  String subcategory;
   String urgency;
   String? deadline;
   int isRepeating;
   String repeatType;
   int isCompleted;
+  int syncToCalendar;
+  int setNotification;
+  int setAlarm;
 
   Task({
     this.id,
     required this.title,
     this.description = '',
     required this.category,
+    this.subcategory = '',
     required this.urgency,
     this.deadline,
     this.isRepeating = 0,
     this.repeatType = 'None',
-    this.isCompleted = 0
+    this.isCompleted = 0,
+    this.syncToCalendar = 0,
+    this.setNotification = 0,
+    this.setAlarm = 0,
   });
 
   Map<String, dynamic> toMap() {
@@ -27,11 +35,15 @@ class Task {
       'title': title,
       'description': description,
       'category': category,
+      'subcategory': subcategory,
       'urgency': urgency,
       'deadline': deadline,
       'isRepeating': isRepeating,
       'repeatType': repeatType,
-      'isCompleted': isCompleted
+      'isCompleted': isCompleted,
+      'syncToCalendar': syncToCalendar,
+      'setNotification': setNotification,
+      'setAlarm': setAlarm,
     };
   }
 }
@@ -45,7 +57,7 @@ class Note {
   String? deadline;
   int isRepeating;
   String repeatType;
-  String noteType; // 'text' | 'canvas' | 'photo'
+  String noteType;
   String? attachmentPath;
 
   Note({
@@ -62,15 +74,15 @@ class Note {
   });
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'title': title,
-        'content': content,
-        'category': category,
-        'urgency': urgency,
-        'deadline': deadline,
-        'isRepeating': isRepeating,
-        'repeatType': repeatType,
-        'noteType': noteType,
-        'attachmentPath': attachmentPath,
-      };
+    'id': id,
+    'title': title,
+    'content': content,
+    'category': category,
+    'urgency': urgency,
+    'deadline': deadline,
+    'isRepeating': isRepeating,
+    'repeatType': repeatType,
+    'noteType': noteType,
+    'attachmentPath': attachmentPath,
+  };
 }
