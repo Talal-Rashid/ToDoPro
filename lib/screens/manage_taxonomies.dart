@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import '../db_helper.dart';
 
 class ManageTaxonomies extends StatefulWidget {
+  const ManageTaxonomies({super.key});
+
   @override
-  _ManageTaxonomiesState createState() => _ManageTaxonomiesState();
+  State<ManageTaxonomies> createState() => _ManageTaxonomiesState();
 }
 
 class _ManageTaxonomiesState extends State<ManageTaxonomies> {
@@ -18,7 +20,7 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
     _load();
   }
 
-  _load() async {
+  Future<void> _load() async {
     categories = await DBHelper.getCategories();
     urgencies = await DBHelper.getUrgencies();
     setState(() {});

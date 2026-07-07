@@ -11,7 +11,7 @@ class NoteScreen extends StatefulWidget {
   const NoteScreen({super.key});
 
   @override
-  _NoteScreenState createState() => _NoteScreenState();
+  State<NoteScreen> createState() => _NoteScreenState();
 }
 
 class _NoteScreenState extends State<NoteScreen> {
@@ -72,7 +72,7 @@ class NoteEditor extends StatefulWidget {
   const NoteEditor({super.key, this.note, required this.onSave});
 
   @override
-  _NoteEditorState createState() => _NoteEditorState();
+  State<NoteEditor> createState() => _NoteEditorState();
 }
 
 class _NoteEditorState extends State<NoteEditor> {
@@ -102,7 +102,9 @@ class _NoteEditorState extends State<NoteEditor> {
             _canvasKey.currentState?.loadFromJson(txt);
             setState(() {});
           }
-        } catch (e) {}
+        } catch (e) {
+          // ignore error loading canvas state
+        }
       });
     }
   }
@@ -222,7 +224,7 @@ class _NoteEditorState extends State<NoteEditor> {
                           final empty = jsonEncode({
                             'width': 800,
                             'height': 600,
-                            'backgroundFill': Colors.white.value,
+                            'backgroundFill': Colors.white.toARGB32(),
                             'strokes': [],
                             'shapes': []
                           });
@@ -321,7 +323,9 @@ class _NoteEditorState extends State<NoteEditor> {
                 await DBHelper.updateNote(n);
               }
               widget.onSave();
-              Navigator.pop(context);
+              if (context.mounted) {
+                Navigator.pop(context);
+              }
             },
             child: Text("SAVE NOTE", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           )
@@ -360,7 +364,7 @@ class FullscreenCanvasEditor extends StatefulWidget {
   final String? initialJson;
   const FullscreenCanvasEditor({super.key, this.initialJson});
   @override
-  _FullscreenCanvasEditorState createState() => _FullscreenCanvasEditorState();
+  State<FullscreenCanvasEditor> createState() => _FullscreenCanvasEditorState();
 }
 
 class _FullscreenCanvasEditorState extends State<FullscreenCanvasEditor> {

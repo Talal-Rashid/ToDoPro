@@ -5,8 +5,10 @@ import '../db_helper.dart';
 import '../models.dart';
 
 class CalendarScreen extends StatefulWidget {
+  const CalendarScreen({super.key});
+
   @override
-  _CalendarScreenState createState() => _CalendarScreenState();
+  State<CalendarScreen> createState() => _CalendarScreenState();
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
@@ -21,7 +23,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _fetch();
   }
 
-  _fetch() async {
+  Future<void> _fetch() async {
     var data = await DBHelper.getTasks();
     setState(() {
       deadlineTasks = data.where((t) => t.deadline != null).toList();
@@ -50,7 +52,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             },
             calendarStyle: CalendarStyle(
               markerDecoration: BoxDecoration(color: Colors.amber, shape: BoxShape.circle),
-              todayDecoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.5), shape: BoxShape.circle),
+              todayDecoration: BoxDecoration(color: Colors.blueAccent.withValues(alpha: 0.5), shape: BoxShape.circle),
               selectedDecoration: BoxDecoration(color: Colors.blueAccent, shape: BoxShape.circle),
             ),
           ),
@@ -82,8 +84,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   void _showEditTask(Task task) {
-    TextEditingController _t = TextEditingController(text: task.title);
-    TextEditingController _d = TextEditingController(text: task.description);
+    final titleController = TextEditingController(text: task.title);
+    final descriptionController = TextEditingController(text: task.description);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -92,16 +94,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: _t, decoration: InputDecoration(hintText: "Title")),
-            TextField(controller: _d, decoration: InputDecoration(hintText: "Description")),
+            TextField(controller: titleController, decoration: InputDecoration(hintText: "Title")),
+            TextField(controller: descriptionController, decoration: InputDecoration(hintText: "Description")),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                task.title = _t.text;
-                task.description = _d.text;
+                task.title = titleController.text;
+                task.description = descriptionController.text;
                 DBHelper.updateTask(task).then((_) {
                   _fetch();
-                  Navigator.pop(ctx);
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx);
+                  }
                 });
               },
               child: Text("Update Deadline Info"),

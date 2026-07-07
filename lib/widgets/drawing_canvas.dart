@@ -82,18 +82,18 @@ class DrawingCanvasState extends State<DrawingCanvas> {
     final Map<String, dynamic> data = {
       'width': widget.width,
       'height': widget.height,
-      'backgroundFill': backgroundFill.value,
+      'backgroundFill': backgroundFill.toARGB32(),
       'strokes': strokes.map((s) => {
             'points': s.points.map((p) => {'x': p.dx, 'y': p.dy}).toList(),
-            'color': s.color.value,
+            'color': s.color.toARGB32(),
             'strokeWidth': s.strokeWidth,
           }).toList(),
       'shapes': shapes.map((s) => {
             'mode': s.mode.toString(),
             'start': {'x': s.start.dx, 'y': s.start.dy},
             'end': {'x': s.end.dx, 'y': s.end.dy},
-            'strokeColor': s.strokeColor.value,
-            'fillColor': s.fillColor?.value,
+            'strokeColor': s.strokeColor.toARGB32(),
+            'fillColor': s.fillColor?.toARGB32(),
             'strokeWidth': s.strokeWidth,
           }).toList(),
     };
@@ -109,13 +109,19 @@ class DrawingCanvasState extends State<DrawingCanvas> {
     final List<DrawShape> newShapes = [];
     for (var si in sdata) {
       final pts = <Offset>[];
-      for (var p in si['points']) pts.add(Offset((p['x'] as num).toDouble(), (p['y'] as num).toDouble()));
+      for (var p in si['points']) {
+        pts.add(Offset((p['x'] as num).toDouble(), (p['y'] as num).toDouble()));
+      }
       newStrokes.add(DrawStroke(pts, Color(si['color']), (si['strokeWidth'] as num).toDouble()));
     }
     for (var sh in shdata) {
       final modeStr = sh['mode'] as String;
       CanvasMode mode = CanvasMode.pen;
-      for (var m in CanvasMode.values) if (m.toString() == modeStr) mode = m;
+      for (var m in CanvasMode.values) {
+        if (m.toString() == modeStr) {
+          mode = m;
+        }
+      }
       final start = Offset((sh['start']['x'] as num).toDouble(), (sh['start']['y'] as num).toDouble());
       final end = Offset((sh['end']['x'] as num).toDouble(), (sh['end']['y'] as num).toDouble());
       final strokeColor = Color(sh['strokeColor']);
@@ -126,7 +132,7 @@ class DrawingCanvasState extends State<DrawingCanvas> {
     setState(() {
       strokes = newStrokes;
       shapes = newShapes;
-      final bgVal = (data['backgroundFill'] as num?)?.toInt() ?? Colors.white.value;
+      final bgVal = (data['backgroundFill'] as num?)?.toInt() ?? Colors.white.toARGB32();
       backgroundFill = Color(bgVal);
     });
   }
@@ -223,7 +229,7 @@ class _DrawingPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (showGrid) {
-      final gridPaint = Paint()..color = Colors.grey.withOpacity(0.3)..style = PaintingStyle.stroke..strokeWidth = 0.5;
+      final gridPaint = Paint()..color = Colors.grey.withValues(alpha: 0.3)..style = PaintingStyle.stroke..strokeWidth = 0.5;
       const step = 20.0;
       for (double x = 0; x < size.width; x += step) {
         canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);

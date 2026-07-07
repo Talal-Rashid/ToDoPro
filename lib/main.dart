@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'db_helper.dart'; //
-import 'models.dart';   //
 import 'screens/task_screen.dart';     //
 import 'screens/note_screen.dart';     //
 import 'screens/calender_screen.dart'; //
@@ -8,12 +6,14 @@ import 'screens/calender_screen.dart'; //
 void main() => runApp(MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(primaryColor: Colors.blueAccent),
-      home: MainShell(),
+      home: const MainShell(),
     ));
 
 class MainShell extends StatefulWidget {
+  const MainShell({super.key});
+
   @override
-  _MainShellState createState() => _MainShellState();
+  State<MainShell> createState() => _MainShellState();
 }
 
 class _MainShellState extends State<MainShell> {

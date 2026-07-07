@@ -8,7 +8,7 @@ class TaskScreen extends StatefulWidget {
   const TaskScreen({super.key});
 
   @override
-  _TaskScreenState createState() => _TaskScreenState();
+  State<TaskScreen> createState() => _TaskScreenState();
 }
 
 class _TaskScreenState extends State<TaskScreen> {
@@ -337,7 +337,7 @@ class TaskEditor extends StatefulWidget {
   const TaskEditor({super.key, this.task, required this.onSave, this.autofocusTitle = false});
 
   @override
-  _TaskEditorState createState() => _TaskEditorState();
+  State<TaskEditor> createState() => _TaskEditorState();
 }
 
 class _TaskEditorState extends State<TaskEditor> {
@@ -451,7 +451,9 @@ class _TaskEditorState extends State<TaskEditor> {
               }
 
               widget.onSave();
-              Navigator.pop(context);
+              if (context.mounted) {
+                Navigator.pop(context);
+              }
             },
             child: Text("SAVE TASK", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           )
@@ -466,7 +468,7 @@ class FilteredTasksScreen extends StatefulWidget {
   final String value;
   const FilteredTasksScreen({super.key, required this.filterBy, required this.value});
   @override
-  _FilteredTasksScreenState createState() => _FilteredTasksScreenState();
+  State<FilteredTasksScreen> createState() => _FilteredTasksScreenState();
 }
 
 class _FilteredTasksScreenState extends State<FilteredTasksScreen> {
@@ -485,7 +487,7 @@ class _FilteredTasksScreenState extends State<FilteredTasksScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('${widget.value}')),
+      appBar: AppBar(title: Text(widget.value)),
       body: ListView(children: tasks.map((t) => ListTile(
         title: Text(t.title.isEmpty ? '(no title)' : t.title),
         subtitle: Text(t.description.isEmpty ? '(no details)' : t.description),
@@ -498,7 +500,9 @@ class _FilteredTasksScreenState extends State<FilteredTasksScreen> {
           final id = await DBHelper.insertTask(newTask);
           newTask.id = id;
           await _load();
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => TaskEditor(task: newTask, onSave: _load, autofocusTitle: true)));
+          if (context.mounted) {
+            await Navigator.push(context, MaterialPageRoute(builder: (_) => TaskEditor(task: newTask, onSave: _load, autofocusTitle: true)));
+          }
         },
         child: Icon(Icons.add),
       ),
