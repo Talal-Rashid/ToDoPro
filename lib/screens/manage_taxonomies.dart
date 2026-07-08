@@ -28,7 +28,6 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
     categories = await DBHelper.getCategories();
     urgencies = await DBHelper.getUrgencies();
 
-    // Set a default selected category if none is active yet to ensure visibility
     if (selectedCategoryForSubs == null && categories.isNotEmpty) {
       selectedCategoryForSubs = categories.first;
     }
@@ -51,265 +50,312 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Manage Settings & Taxonomies')),
+      appBar: AppBar(title: const Text('Settings & Configuration')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         children: [
-          // 1. CATEGORIES MANAGEMENT
-          const Text(
-            'Categories Pool',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: Colors.blueAccent,
-            ),
-          ),
-          const SizedBox(height: 8),
-          categories.isEmpty
-              ? const Text(
-                  'No categories found.',
-                  style: TextStyle(color: Colors.grey),
-                )
-              : Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: categories
-                      .map(
-                        (c) => Chip(
-                          label: Text(c),
-                          backgroundColor: Colors.grey[900],
-                          onDeleted: () async {
-                            await DBHelper.deleteCategory(c);
-                            if (selectedCategoryForSubs == c)
-                              selectedCategoryForSubs = null;
-                            _load();
-                          },
-                        ),
-                      )
-                      .toList(),
-                ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _catCtl,
-                  decoration: const InputDecoration(
-                    hintText: 'Add new global category',
-                    border: UnderlineInputBorder(),
-                  ),
-                ),
+          // PANEL 1: CATEGORIES POOL CONFIGURATION
+          Card(
+            color: Colors.grey[900],
+            child: ExpansionTile(
+              leading: const Icon(Icons.category, color: Colors.blueAccent),
+              title: const Text(
+                'Categories Pool',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
-              IconButton(
-                icon: const Icon(Icons.add_circle_outline, color: Colors.green),
-                onPressed: () async {
-                  if (_catCtl.text.trim().isNotEmpty) {
-                    await DBHelper.insertCategory(_catCtl.text.trim());
-                    selectedCategoryForSubs = _catCtl.text.trim();
-                    _catCtl.clear();
-                    _load();
-                  }
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 16),
-
-          // 2. RELATIONAL SUBCATEGORIES MANAGEMENT (ALWAYS ACCESSIBLE VIA DROPDOWN SELECTOR)
-          const Text(
-            'Subcategories Engine',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: Colors.blueAccent,
-            ),
-          ),
-          const SizedBox(height: 12),
-          if (categories.isEmpty)
-            const Text(
-              'Create a category first to activate subcategories.',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
-            )
-          else ...[
-            DropdownButtonFormField<String>(
-              value: categories.contains(selectedCategoryForSubs)
-                  ? selectedCategoryForSubs
-                  : categories.first,
-              decoration: const InputDecoration(
-                labelText: "Select Parent Category to Manage",
-                border: OutlineInputBorder(),
-              ),
-              items: categories
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                  .toList(),
-              onChanged: (v) async {
-                setState(() {
-                  selectedCategoryForSubs = v;
-                  activeSubcategories = [];
-                });
-                var fetched = await DBHelper.getSubcategories(v!);
-                setState(() {
-                  activeSubcategories = fetched;
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Active Subcategories under "${selectedCategoryForSubs ?? ""}"',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.white70,
-              ),
-            ),
-            const SizedBox(height: 8),
-            activeSubcategories.isEmpty
-                ? Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[900],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      'No subcategories registered under this track yet.',
-                      style: TextStyle(color: Colors.grey, fontSize: 13),
-                    ),
-                  )
-                : Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: activeSubcategories
-                        .map(
-                          (s) => Chip(
-                            label: Text(s),
-                            deleteIcon: const Icon(Icons.close, size: 14),
-                            onDeleted: () async {
-                              await DBHelper.deleteSubcategory(
-                                selectedCategoryForSubs!,
-                                s,
-                              );
-                              _load();
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: categories
+                            .map(
+                              (c) => Chip(
+                                label: Text(
+                                  c,
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                                visualDensity: VisualDensity.compact,
+                                onDeleted: () async {
+                                  await DBHelper.deleteCategory(c);
+                                  if (selectedCategoryForSubs == c) {
+                                    selectedCategoryForSubs = null;
+                                  }
+                                  _load();
+                                },
+                              ),
+                            )
+                            .toList(),
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _catCtl,
+                              decoration: const InputDecoration(
+                                hintText: 'Add new global category',
+                                border: UnderlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.add_circle_outline,
+                              color: Colors.green,
+                            ),
+                            onPressed: () async {
+                              if (_catCtl.text.trim().isNotEmpty) {
+                                await DBHelper.insertCategory(
+                                  _catCtl.text.trim(),
+                                );
+                                selectedCategoryForSubs = _catCtl.text.trim();
+                                _catCtl.clear();
+                                _load();
+                              }
                             },
                           ),
-                        )
-                        .toList(),
+                        ],
+                      ),
+                    ],
                   ),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _subCtl,
-                    decoration: InputDecoration(
-                      hintText:
-                          'New subcategory for ${selectedCategoryForSubs ?? ""}',
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add, color: Colors.blueAccent),
-                  onPressed: () async {
-                    if (_subCtl.text.trim().isNotEmpty &&
-                        selectedCategoryForSubs != null) {
-                      await DBHelper.insertSubcategory(
-                        selectedCategoryForSubs!,
-                        _subCtl.text.trim(),
-                      );
-                      _subCtl.clear();
-                      _load();
-                    }
-                  },
                 ),
               ],
             ),
-          ],
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 16),
+          ),
 
-          // 3. DRAGGABLE PRIORITY HIERARCHY MANAGEMENT
-          const Text(
-            'Urgencies Hierarchy (Drag to Sort Priority)',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: Colors.blueAccent,
+          // PANEL 2: RELATIONAL SUBCATEGORIES SUB-ENGINE
+          Card(
+            color: Colors.grey[900],
+            child: ExpansionTile(
+              leading: const Icon(Icons.layers, color: Colors.blueAccent),
+              title: const Text(
+                'Subcategories Engine',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: categories.isEmpty
+                      ? const Text(
+                          'Create a parent category first.',
+                          style: TextStyle(color: Colors.grey),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            DropdownButtonFormField<String>(
+                              initialValue:
+                                  categories.contains(selectedCategoryForSubs)
+                                      ? selectedCategoryForSubs
+                                      : categories.first,
+                              decoration: const InputDecoration(
+                                labelText: "Parent Category",
+                                border: OutlineInputBorder(),
+                              ),
+                              items: categories
+                                  .map(
+                                    (e) => DropdownMenuItem(
+                                      value: e,
+                                      child: Text(e),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (v) async {
+                                setState(() {
+                                  selectedCategoryForSubs = v;
+                                  activeSubcategories = [];
+                                });
+                                var fetched = await DBHelper.getSubcategories(
+                                  v!,
+                                );
+                                setState(() {
+                                  activeSubcategories = fetched;
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            activeSubcategories.isEmpty
+                                ? const Text(
+                                    'No subcategories under this track.',
+                                    style: TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 12,
+                                    ),
+                                  )
+                                : Wrap(
+                                    spacing: 6,
+                                    runSpacing: 4,
+                                    children: activeSubcategories
+                                        .map(
+                                          (s) => Chip(
+                                            label: Text(
+                                              s,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                            deleteIcon: const Icon(
+                                              Icons.close,
+                                              size: 12,
+                                            ),
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                            onDeleted: () async {
+                                              await DBHelper.deleteSubcategory(
+                                                selectedCategoryForSubs!,
+                                                s,
+                                              );
+                                              _load();
+                                            },
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _subCtl,
+                                    decoration: InputDecoration(
+                                      hintText:
+                                          'New subcategory for $selectedCategoryForSubs',
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.add,
+                                    color: Colors.blueAccent,
+                                  ),
+                                  onPressed: () async {
+                                    if (_subCtl.text.trim().isNotEmpty &&
+                                        selectedCategoryForSubs != null) {
+                                      await DBHelper.insertSubcategory(
+                                        selectedCategoryForSubs!,
+                                        _subCtl.text.trim(),
+                                      );
+                                      _subCtl.clear();
+                                      _load();
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'Items at the top take compilation priority in your list splits.',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: urgencies.length * 56.0,
-            child: ReorderableListView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: urgencies.length,
-              itemBuilder: (context, index) {
-                final u = urgencies[index];
-                return ListTile(
-                  key: ValueKey('urg_$u'),
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.blueGrey[800],
-                    radius: 14,
-                    child: Text(
-                      '${index + 1}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+
+          // PANEL 3: DRAGGABLE HIERARCHY
+          Card(
+            color: Colors.grey[900],
+            child: ExpansionTile(
+              leading: const Icon(Icons.low_priority, color: Colors.blueAccent),
+              title: const Text(
+                'Urgencies Hierarchy',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    children: [
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Drag items to sort compilation ranking priority.',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: urgencies.length * 52.0,
+                        child: ReorderableListView.builder(
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: urgencies.length,
+                          itemBuilder: (context, index) {
+                            final u = urgencies[index];
+                            return ListTile(
+                              key: ValueKey('urg_$u'),
+                              dense: true,
+                              visualDensity: VisualDensity.compact,
+                              leading: CircleAvatar(
+                                backgroundColor: Colors.blueGrey[850],
+                                radius: 11,
+                                child: Text(
+                                  '${index + 1}',
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              title: Text(
+                                u,
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                              trailing: const Icon(
+                                Icons.drag_handle,
+                                color: Colors.grey,
+                                size: 20,
+                              ),
+                            );
+                          },
+                          onReorderItem: (oldIndex, newIndex) {
+                            setState(() {
+                              final item = urgencies.removeAt(oldIndex);
+                              urgencies.insert(newIndex, item);
+                            });
+                            _updateUrgencyOrder();
+                          },
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _urgCtl,
+                              decoration: const InputDecoration(
+                                hintText: 'Add custom ranking tier...',
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.playlist_add,
+                              color: Colors.amber,
+                              size: 26,
+                            ),
+                            onPressed: () async {
+                              if (_urgCtl.text.trim().isNotEmpty) {
+                                await DBHelper.insertUrgency(
+                                  _urgCtl.text.trim(),
+                                  urgencies.length,
+                                );
+                                _urgCtl.clear();
+                                _load();
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  title: Text(u),
-                  trailing: const Icon(Icons.drag_handle, color: Colors.grey),
-                );
-              },
-              onReorder: (oldIndex, newIndex) {
-                setState(() {
-                  if (newIndex > oldIndex) {
-                    newIndex -= 1;
-                  }
-                  final item = urgencies.removeAt(oldIndex);
-                  urgencies.insert(newIndex, item);
-                });
-                _updateUrgencyOrder();
-              },
+                ),
+              ],
             ),
           ),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _urgCtl,
-                  decoration: const InputDecoration(
-                    hintText: 'Add custom urgency ranking tier...',
-                  ),
-                ),
-              ),
-              IconButton(
-                icon: const Icon(
-                  Icons.playlist_add,
-                  color: Colors.amber,
-                  size: 28,
-                ),
-                onPressed: () async {
-                  if (_urgCtl.text.trim().isNotEmpty) {
-                    await DBHelper.insertUrgency(
-                      _urgCtl.text.trim(),
-                      urgencies.length,
-                    );
-                    _urgCtl.clear();
-                    _load();
-                  }
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 40),
+
+          // FUTURE EXPANSION SLOTS PREPARED HERE
+          // Card(child: ExpansionTile(leading: Icon(Icons.dark_mode), title: Text("Appearance (Theme)"))),
+          // Card(child: ExpansionTile(leading: Icon(Icons.account_circle), title: Text("Account & Cloud Sync"))),
         ],
       ),
     );

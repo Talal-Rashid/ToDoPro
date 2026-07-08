@@ -119,7 +119,7 @@ class _TaskScreenState extends State<TaskScreen> {
               color: Colors.blueGrey[900],
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: const Text(
-                'Inline Editor Active. Tap ✓ to finalize changes.',
+                'Inline Editor Active. Press Keyboard Enter to spawn next item.',
                 style: TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ),
@@ -190,9 +190,17 @@ class _TaskScreenState extends State<TaskScreen> {
     String metadata = groupMode == 'Urgency' ? task.category : task.urgency;
     if (task.subcategory.isNotEmpty) metadata += " / ${task.subcategory}";
 
-    String dateInfo = task.deadline != null
-        ? " • ${DateFormat('MMM dd, hh:mm a').format(DateTime.parse(task.deadline!))}"
-        : "";
+    String dateInfo = "";
+    if (task.deadline != null) {
+      DateTime dt = DateTime.parse(task.deadline!);
+      // Format context conditionally if time component exists or was bypassed
+      if (task.deadline!.contains('T23:59:59') ||
+          !task.deadline!.contains(':')) {
+        dateInfo = " • ${DateFormat('MMM dd, yyyy').format(dt)}";
+      } else {
+        dateInfo = " • ${DateFormat('MMM dd, hh:mm a').format(dt)}";
+      }
+    }
 
     if (task.id != null && task.id == _editingTaskId) {
       _editingTitleController ??= TextEditingController(text: task.title);
@@ -210,10 +218,40 @@ class _TaskScreenState extends State<TaskScreen> {
               controller: _editingTitleController,
               focusNode: _editingTitleFocus,
               autofocus: true,
+              textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 hintText: 'Task title',
                 border: InputBorder.none,
               ),
+              onSubmitted: (v) async {
+                final titleText = v.trim();
+                if (titleText.isNotEmpty) {
+                  task.title = titleText;
+                  task.description = (_editingDescController?.text ?? '')
+                      .trim();
+                  await DBHelper.updateTask(task);
+
+                  // Instantly chain spawn the next inline task template
+                  Task newTask = Task(
+                    title: '',
+                    category: task.category,
+                    subcategory: task.subcategory,
+                    urgency: task.urgency,
+                  );
+                  final newId = await DBHelper.insertTask(newTask);
+                  await _refresh();
+                  setState(() {
+                    _editingTaskId = newId;
+                    _editingTitleController = TextEditingController(text: '');
+                    _editingDescController = TextEditingController(text: '');
+                    _editingTitleFocus = FocusNode();
+                    _editingDescFocus = FocusNode();
+                  });
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _editingTitleFocus?.requestFocus();
+                  });
+                }
+              },
             ),
             Row(
               children: [
@@ -273,40 +311,70 @@ class _TaskScreenState extends State<TaskScreen> {
             DBHelper.updateTask(task).then((_) => _refresh());
           },
         ),
-        trailing: Row(
+        trailing: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            if (task.syncToCalendar == 1)
-              const Padding(
-                padding: EdgeInsets.only(right: 4),
-                child: Icon(
-                  Icons.calendar_month,
-                  size: 16,
-                  color: Colors.blueAccent,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                InkWell(
+                  onTap: () => _showTaskBottomSheet(context, task),
+                  borderRadius: BorderRadius.circular(4),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    child: Icon(Icons.edit_note, color: Colors.blueAccent, size: 20),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                InkWell(
+                  onTap: () => _confirmDeletion(task),
+                  borderRadius: BorderRadius.circular(4),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    child: Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                  ),
+                ),
+              ],
+            ),
+            if (task.syncToCalendar == 1 ||
+                task.setNotification == 1 ||
+                task.setAlarm == 1)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (task.syncToCalendar == 1)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 2),
+                        child: Icon(
+                          Icons.calendar_month,
+                          size: 14,
+                          color: Colors.blueAccent,
+                        ),
+                      ),
+                    if (task.setNotification == 1)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 2),
+                        child: Icon(
+                          Icons.notifications_active,
+                          size: 14,
+                          color: Colors.amber,
+                        ),
+                      ),
+                    if (task.setAlarm == 1)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 2),
+                        child: Icon(
+                          Icons.alarm,
+                          size: 14,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                  ],
                 ),
               ),
-            if (task.setNotification == 1)
-              const Padding(
-                padding: EdgeInsets.only(right: 4),
-                child: Icon(
-                  Icons.notifications_active,
-                  size: 16,
-                  color: Colors.amber,
-                ),
-              ),
-            if (task.setAlarm == 1)
-              const Padding(
-                padding: EdgeInsets.only(right: 4),
-                child: Icon(Icons.alarm, size: 16, color: Colors.redAccent),
-              ),
-            IconButton(
-              icon: const Icon(Icons.edit_note, color: Colors.blueAccent),
-              onPressed: () => _showTaskBottomSheet(context, task),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-              onPressed: () => _confirmDeletion(task),
-            ),
           ],
         ),
         children: [
@@ -382,9 +450,17 @@ class _TaskScreenState extends State<TaskScreen> {
     if (selectedSubCat.isEmpty) selectedSubCat = 'None';
     String selectedUrg = existingTask?.urgency ?? 'Today';
     String selectedRepeat = existingTask?.repeatType ?? 'None';
-    DateTime? deadline = existingTask?.deadline != null
-        ? DateTime.parse(existingTask!.deadline!)
-        : null;
+
+    DateTime? deadlineDate;
+    TimeOfDay? deadlineTime;
+
+    if (existingTask?.deadline != null) {
+      DateTime parsed = DateTime.parse(existingTask!.deadline!);
+      deadlineDate = DateTime(parsed.year, parsed.month, parsed.day);
+      if (!existingTask.deadline!.contains('T23:59:59')) {
+        deadlineTime = TimeOfDay(hour: parsed.hour, minute: parsed.minute);
+      }
+    }
 
     bool isRepeating = existingTask?.isRepeating == 1;
     bool syncCal = existingTask?.syncToCalendar == 1;
@@ -670,27 +746,29 @@ class _TaskScreenState extends State<TaskScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
+
+                    // SPLIT OPTIONAL DEADLINE MANAGEMENT VIEW
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(
-                        Icons.calendar_month,
+                        Icons.calendar_today,
                         color: Colors.blueAccent,
                       ),
                       title: Text(
-                        deadline == null
-                            ? "Set Deadline"
-                            : DateFormat(
-                                'MMM dd, yyyy - hh:mm a',
-                              ).format(deadline!),
+                        deadlineDate == null
+                            ? "Set Date Deadline"
+                            : DateFormat('MMM dd, yyyy').format(deadlineDate!),
                       ),
-                      trailing: deadline != null
+                      trailing: deadlineDate != null
                           ? IconButton(
                               icon: const Icon(
                                 Icons.clear,
                                 color: Colors.redAccent,
                               ),
-                              onPressed: () =>
-                                  setModalState(() => deadline = null),
+                              onPressed: () => setModalState(() {
+                                deadlineDate = null;
+                                deadlineTime = null;
+                              }),
                             )
                           : const Icon(Icons.arrow_forward_ios, size: 14),
                       onTap: () async {
@@ -700,70 +778,107 @@ class _TaskScreenState extends State<TaskScreen> {
                           firstDate: DateTime(2025),
                           lastDate: DateTime(2035),
                         );
-                        if (datePicked != null && context.mounted) {
+                        if (datePicked != null) {
+                          setModalState(() {
+                            deadlineDate = datePicked;
+                          });
+                        }
+                      },
+                    ),
+                    if (deadlineDate != null)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(
+                          Icons.access_time,
+                          color: Colors.amber,
+                        ),
+                        title: Text(
+                          deadlineTime == null
+                              ? "Add Precise Time (Optional)"
+                              : deadlineTime!.format(context),
+                        ),
+                        trailing: deadlineTime != null
+                            ? IconButton(
+                                icon: const Icon(
+                                  Icons.clear,
+                                  color: Colors.grey,
+                                ),
+                                onPressed: () =>
+                                    setModalState(() => deadlineTime = null),
+                              )
+                            : const Icon(Icons.arrow_forward_ios, size: 14),
+                        onTap: () async {
                           TimeOfDay? timePicked = await showTimePicker(
                             context: context,
                             initialTime: TimeOfDay.now(),
                           );
                           if (timePicked != null) {
                             setModalState(() {
-                              deadline = DateTime(
-                                datePicked.year,
-                                datePicked.month,
-                                datePicked.day,
-                                timePicked.hour,
-                                timePicked.minute,
-                              );
+                              deadlineTime = timePicked;
                             });
                           }
-                        }
-                      },
-                    ),
+                        },
+                      ),
                     const Divider(),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: const Text(
-                              'Repeating Task',
-                              style: TextStyle(fontSize: 15),
-                            ),
+
+                    // COMPACT REPEATING ROW IMPLEMENTATION
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: Row(
+                        children: [
+                          const Text(
+                            'Repeating Task',
+                            style: TextStyle(fontSize: 15),
+                          ),
+                          const SizedBox(width: 8),
+                          Switch(
                             value: isRepeating,
                             onChanged: (v) =>
                                 setModalState(() => isRepeating = v),
                           ),
-                        ),
-                        if (isRepeating)
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              initialValue: selectedRepeat,
-                              decoration: const InputDecoration(
-                                labelText: "Interval",
-                                border: OutlineInputBorder(),
+                          const Spacer(),
+                          if (isRepeating)
+                            SizedBox(
+                              width: 140,
+                              child: DropdownButtonFormField<String>(
+                                initialValue: selectedRepeat,
+                                decoration: const InputDecoration(
+                                  labelText: "Interval",
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                  border: OutlineInputBorder(),
+                                ),
+                                items:
+                                    [
+                                          'None',
+                                          'Daily',
+                                          'Weekly',
+                                          'Biweekly',
+                                          'Monthly',
+                                        ]
+                                        .map(
+                                          (e) => DropdownMenuItem(
+                                            value: e,
+                                            child: Text(
+                                              e,
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                                onChanged: (v) =>
+                                    setModalState(() => selectedRepeat = v!),
                               ),
-                              items:
-                                  [
-                                        'None',
-                                        'Daily',
-                                        'Weekly',
-                                        'Biweekly',
-                                        'Monthly',
-                                      ]
-                                      .map(
-                                        (e) => DropdownMenuItem(
-                                          value: e,
-                                          child: Text(e),
-                                        ),
-                                      )
-                                      .toList(),
-                              onChanged: (v) =>
-                                  setModalState(() => selectedRepeat = v!),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                     const Divider(),
+
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 4),
                       child: Text(
@@ -788,7 +903,9 @@ class _TaskScreenState extends State<TaskScreen> {
                           ),
                           label: const Text("Calendar"),
                           selected: syncCal,
-                          selectedColor: Colors.blueAccent.withValues(alpha: 0.3),
+                          selectedColor: Colors.blueAccent.withValues(
+                            alpha: 0.3,
+                          ),
                           onSelected: (v) => setModalState(() => syncCal = v),
                         ),
                         ChoiceChip(
@@ -810,7 +927,9 @@ class _TaskScreenState extends State<TaskScreen> {
                           ),
                           label: const Text("Alarm"),
                           selected: setAlarm,
-                          selectedColor: Colors.redAccent.withValues(alpha: 0.3),
+                          selectedColor: Colors.redAccent.withValues(
+                            alpha: 0.3,
+                          ),
                           onSelected: (v) => setModalState(() => setAlarm = v),
                         ),
                       ],
@@ -844,7 +963,31 @@ class _TaskScreenState extends State<TaskScreen> {
                                   ? ''
                                   : selectedSubCat;
                               t.urgency = selectedUrg;
-                              t.deadline = deadline?.toIso8601String();
+
+                              if (deadlineDate != null) {
+                                if (deadlineTime != null) {
+                                  t.deadline = DateTime(
+                                    deadlineDate!.year,
+                                    deadlineDate!.month,
+                                    deadlineDate!.day,
+                                    deadlineTime!.hour,
+                                    deadlineTime!.minute,
+                                  ).toIso8601String();
+                                } else {
+                                  // Assign absolute end of day block to indicate timeless date flag safely
+                                  t.deadline = DateTime(
+                                    deadlineDate!.year,
+                                    deadlineDate!.month,
+                                    deadlineDate!.day,
+                                    23,
+                                    59,
+                                    59,
+                                  ).toIso8601String();
+                                }
+                              } else {
+                                t.deadline = null;
+                              }
+
                               t.isRepeating = isRepeating ? 1 : 0;
                               t.repeatType = isRepeating
                                   ? selectedRepeat
@@ -893,14 +1036,12 @@ class FilteredTasksScreen extends StatefulWidget {
     required this.filterBy,
     required this.value,
   });
-
   @override
   State<FilteredTasksScreen> createState() => _FilteredTasksScreenState();
 }
 
 class _FilteredTasksScreenState extends State<FilteredTasksScreen> {
   List<Task> tasks = [];
-
   @override
   void initState() {
     super.initState();
