@@ -48,6 +48,39 @@ class Task {
   }
 }
 
+// NEW: Normalized Relational SubTask Class Object
+class SubTask {
+  int? id;
+  int parentId; // Strict Foreign Key mapping pointer
+  String title;
+  int isCompleted;
+
+  SubTask({
+    this.id,
+    required this.parentId,
+    required this.title,
+    this.isCompleted = 0,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'parent_id': parentId,
+      'title': title,
+      'isCompleted': isCompleted,
+    };
+  }
+
+  factory SubTask.fromMap(Map<String, dynamic> map) {
+    return SubTask(
+      id: map['id'],
+      parentId: map['parent_id'],
+      title: map['title'],
+      isCompleted: map['isCompleted'] ?? 0,
+    );
+  }
+}
+
 class Note {
   int? id;
   String title;

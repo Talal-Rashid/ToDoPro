@@ -25,6 +25,22 @@ class _TaskScreenState extends State<TaskScreen> {
   final ScrollController _scrollController = ScrollController();
   final Map<int, GlobalKey> _itemKeys = {};
 
+  // Premium Palette Pool for cyclic dynamic distribution
+  final List<Color> _colorPalette = [
+    Colors.blueAccent,
+    Colors.indigoAccent,
+    Colors.tealAccent,
+    Colors.pinkAccent,
+    Colors.amberAccent,
+    Colors.greenAccent,
+    Colors.deepPurpleAccent,
+    Colors.cyanAccent,
+    Colors.lightBlueAccent,
+    Colors.orangeAccent,
+    Colors.limeAccent,
+    Colors.purpleAccent,
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -46,6 +62,32 @@ class _TaskScreenState extends State<TaskScreen> {
 
   int _getWeight(String urgency) {
     return urgencyWeights[urgency] ?? 99;
+  }
+
+  // Pure deterministic string hashing loop to assign color wheels cyclically
+  Color _getDeterministicColor(String value) {
+    if (value.isEmpty || value == 'None') return Colors.grey[700]!;
+    int hash = 0;
+    for (int i = 0; i < value.length; i++) {
+      hash = value.codeUnitAt(i) + ((hash << 5) - hash);
+    }
+    int index = hash.abs() % _colorPalette.length;
+    return _colorPalette[index];
+  }
+
+  Color _getUrgencyColor(String urgency) {
+    switch (urgency.toLowerCase()) {
+      case 'today':
+        return Colors.red;
+      case 'urgent':
+        return Colors.redAccent;
+      case 'not urgent':
+        return Colors.green;
+      case 'long term':
+        return Colors.blueGrey;
+      default:
+        return _getDeterministicColor(urgency);
+    }
   }
 
   Map<String, List<Task>> _getGroupedTasks() {
@@ -193,7 +235,6 @@ class _TaskScreenState extends State<TaskScreen> {
     String dateInfo = "";
     if (task.deadline != null) {
       DateTime dt = DateTime.parse(task.deadline!);
-      // Format context conditionally if time component exists or was bypassed
       if (task.deadline!.contains('T23:59:59') ||
           !task.deadline!.contains(':')) {
         dateInfo = " • ${DateFormat('MMM dd, yyyy').format(dt)}";
@@ -231,7 +272,6 @@ class _TaskScreenState extends State<TaskScreen> {
                       .trim();
                   await DBHelper.updateTask(task);
 
-                  // Instantly chain spawn the next inline task template
                   Task newTask = Task(
                     title: '',
                     category: task.category,
@@ -288,108 +328,149 @@ class _TaskScreenState extends State<TaskScreen> {
       );
     }
 
+    // Extraction vectors for continuous gap-free leftmost army-badge strips
+    final Color categoryColor = _getDeterministicColor(task.category);
+    final Color subcategoryColor = _getDeterministicColor(task.subcategory);
+    final Color urgencyColor = _getUrgencyColor(task.urgency);
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       color: Colors.grey[900],
-      child: ExpansionTile(
-        title: Text(
-          task.title,
-          style: TextStyle(
-            decoration: task.isCompleted == 1
-                ? TextDecoration.lineThrough
-                : null,
-          ),
-        ),
-        subtitle: Text(
-          "$metadata$dateInfo",
-          style: const TextStyle(color: Colors.grey, fontSize: 13),
-        ),
-        leading: Checkbox(
-          value: task.isCompleted == 1,
-          onChanged: (v) {
-            task.isCompleted = v! ? 1 : 0;
-            DBHelper.updateTask(task).then((_) => _refresh());
-          },
-        ),
-        trailing: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
+      clipBehavior:
+          Clip.antiAlias, // Ensures the bars don't bleed past container borders
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // NEW: The Army-Badge Vertical Strip Cluster (Left, Middle, Right) with zero gaps
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                InkWell(
-                  onTap: () => _showTaskBottomSheet(context, task),
-                  borderRadius: BorderRadius.circular(4),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    child: Icon(Icons.edit_note, color: Colors.blueAccent, size: 20),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                InkWell(
-                  onTap: () => _confirmDeletion(task),
-                  borderRadius: BorderRadius.circular(4),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    child: Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
-                  ),
-                ),
+                Container(width: 4, color: categoryColor),
+                Container(width: 4, color: subcategoryColor),
+                Container(width: 4, color: urgencyColor),
               ],
             ),
-            if (task.syncToCalendar == 1 ||
-                task.setNotification == 1 ||
-                task.setAlarm == 1)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Row(
+
+            // Core Tile Body Contents Wrapper
+            Expanded(
+              child: ExpansionTile(
+                title: Text(
+                  task.title,
+                  style: TextStyle(
+                    decoration: task.isCompleted == 1
+                        ? TextDecoration.lineThrough
+                        : null,
+                  ),
+                ),
+                subtitle: Text(
+                  "$metadata$dateInfo",
+                  style: const TextStyle(color: Colors.grey, fontSize: 13),
+                ),
+                leading: Checkbox(
+                  value: task.isCompleted == 1,
+                  onChanged: (v) {
+                    task.isCompleted = v! ? 1 : 0;
+                    DBHelper.updateTask(task).then((_) => _refresh());
+                  },
+                ),
+                trailing: Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    if (task.syncToCalendar == 1)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 2),
-                        child: Icon(
-                          Icons.calendar_month,
-                          size: 14,
-                          color: Colors.blueAccent,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        InkWell(
+                          onTap: () => _showTaskBottomSheet(context, task),
+                          borderRadius: BorderRadius.circular(4),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 4,
+                            ),
+                            child: Icon(
+                              Icons.edit_note,
+                              color: Colors.blueAccent,
+                              size: 20,
+                            ),
+                          ),
                         ),
-                      ),
-                    if (task.setNotification == 1)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 2),
-                        child: Icon(
-                          Icons.notifications_active,
-                          size: 14,
-                          color: Colors.amber,
+                        const SizedBox(width: 4),
+                        InkWell(
+                          onTap: () => _confirmDeletion(task),
+                          borderRadius: BorderRadius.circular(4),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 4,
+                            ),
+                            child: Icon(
+                              Icons.delete_outline,
+                              color: Colors.redAccent,
+                              size: 20,
+                            ),
+                          ),
                         ),
-                      ),
-                    if (task.setAlarm == 1)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 2),
-                        child: Icon(
-                          Icons.alarm,
-                          size: 14,
-                          color: Colors.redAccent,
+                      ],
+                    ),
+                    if (task.syncToCalendar == 1 ||
+                        task.setNotification == 1 ||
+                        task.setAlarm == 1)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (task.syncToCalendar == 1)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 2),
+                                child: Icon(
+                                  Icons.calendar_month,
+                                  size: 14,
+                                  color: Colors.blueAccent,
+                                ),
+                              ),
+                            if (task.setNotification == 1)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 2),
+                                child: Icon(
+                                  Icons.notifications_active,
+                                  size: 14,
+                                  color: Colors.amber,
+                                ),
+                              ),
+                            if (task.setAlarm == 1)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 2),
+                                child: Icon(
+                                  Icons.alarm,
+                                  size: 14,
+                                  color: Colors.redAccent,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                   ],
                 ),
-              ),
-          ],
-        ),
-        children: [
-          if (task.description.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  task.description,
-                  style: const TextStyle(color: Colors.white70),
-                ),
+                children: [
+                  if (task.description.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          task.description,
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -747,7 +828,6 @@ class _TaskScreenState extends State<TaskScreen> {
                     ),
                     const SizedBox(height: 8),
 
-                    // SPLIT OPTIONAL DEADLINE MANAGEMENT VIEW
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(
@@ -821,7 +901,6 @@ class _TaskScreenState extends State<TaskScreen> {
                       ),
                     const Divider(),
 
-                    // COMPACT REPEATING ROW IMPLEMENTATION
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4.0),
                       child: Row(
@@ -974,7 +1053,6 @@ class _TaskScreenState extends State<TaskScreen> {
                                     deadlineTime!.minute,
                                   ).toIso8601String();
                                 } else {
-                                  // Assign absolute end of day block to indicate timeless date flag safely
                                   t.deadline = DateTime(
                                     deadlineDate!.year,
                                     deadlineDate!.month,

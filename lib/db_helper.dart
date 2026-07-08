@@ -17,7 +17,7 @@ class DBHelper {
     String path = join(await getDatabasesPath(), 'utility_todo.db');
     return openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: (db, version) async {
         await db.execute(
           "CREATE TABLE tasks(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, category TEXT, subcategory TEXT, urgency TEXT, deadline TEXT, isRepeating INTEGER, repeatType TEXT, isCompleted INTEGER, syncToCalendar INTEGER, setNotification INTEGER, setAlarm INTEGER)",
@@ -33,6 +33,9 @@ class DBHelper {
         );
         await db.execute(
           "CREATE TABLE subcategories(id INTEGER PRIMARY KEY AUTOINCREMENT, category_name TEXT, name TEXT, UNIQUE(category_name, name))",
+        );
+        await db.execute(
+          "CREATE TABLE subtasks(id INTEGER PRIMARY KEY AUTOINCREMENT, parent_id INTEGER, title TEXT, isCompleted INTEGER, FOREIGN KEY(parent_id) REFERENCES tasks(id) ON DELETE CASCADE)",
         );
 
         final defaultCats = ['Work', 'Study', 'Research', 'Entertainment'];
@@ -66,22 +69,6 @@ class DBHelper {
             await db.execute(
               "CREATE TABLE subcategories(id INTEGER PRIMARY KEY AUTOINCREMENT, category_name TEXT, name TEXT, UNIQUE(category_name, name))",
             );
-            final defaultSubs = {
-              'Work': ['Coding', 'Meetings', 'Emails', 'Documentation'],
-              'Study': ['Math', 'Science', 'History', 'Coding Practice'],
-              'Research': ['Market Trends', 'Tech Stack Eval'],
-              'Entertainment': ['Movies', 'Gaming', 'Reading', 'Gym'],
-            };
-            defaultSubs.forEach((cat, subs) async {
-              for (var sub in subs) {
-                try {
-                  await db.insert('subcategories', {
-                    'category_name': cat,
-                    'name': sub,
-                  });
-                } catch (_) {}
-              }
-            });
           } catch (_) {}
         }
         if (oldVersion < 7) {
@@ -90,21 +77,65 @@ class DBHelper {
               "ALTER TABLE urgencies ADD COLUMN weight INTEGER DEFAULT 99",
             );
           } catch (_) {}
-          final defaultUrg = ['Today', 'Urgent', 'Not Urgent', 'Long Term'];
-          for (int i = 0; i < defaultUrg.length; i++) {
-            try {
-              await db.update(
-                'urgencies',
-                {'weight': i},
-                where: 'name = ?',
-                whereArgs: [defaultUrg[i]],
-              );
-            } catch (_) {}
-          }
+        }
+        if (oldVersion < 8) {
+          try {
+            await db.execute(
+              "CREATE TABLE subtasks(id INTEGER PRIMARY KEY AUTOINCREMENT, parent_id INTEGER, title TEXT, isCompleted INTEGER, FOREIGN KEY(parent_id) REFERENCES tasks(id) ON DELETE CASCADE)",
+            );
+          } catch (_) {}
         }
       },
     );
   }
+
+  // --- SUB-TASK SCHEMA OPERATIONS WRAPPERS ---
+
+  static Future<int> insertSubTask(SubTask subTask) async {
+    final db = await initDB();
+    return await db.insert('subtasks', subTask.toMap());
+  }
+
+  static Future<List<SubTask>> getSubTasks(int parentId) async {
+    final db = await initDB();
+    final List<Map<String, dynamic>> maps = await db.query(
+      'subtasks',
+      where: 'parent_id = ?',
+      whereArgs: [parentId],
+    );
+    return maps.map((m) => SubTask.fromMap(m)).toList();
+  }
+
+  static Future<void> updateSubTask(SubTask subTask) async {
+    final db = await initDB();
+    await db.update(
+      'subtasks',
+      subTask.toMap(),
+      where: 'id = ?',
+      whereArgs: [subTask.id],
+    );
+
+    if (subTask.isCompleted == 1) {
+      final List<Map<String, dynamic>> remaining = await db.query(
+        'subtasks',
+        where: 'parent_id = ? AND isCompleted = 0',
+        whereArgs: [subTask.parentId],
+      );
+
+      if (remaining.isEmpty) {
+        await db.execute("UPDATE tasks SET isCompleted = 1 WHERE id = ?", [
+          subTask.parentId,
+        ]);
+      }
+    }
+  }
+
+  static Future<void> deleteSubTask(int id) async {
+    final db = await initDB();
+    await db.delete('subtasks', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // --- BASE TAXONOMY WRAPPERS ---
 
   static Future<List<String>> getCategories() async {
     final db = await initDB();
@@ -126,7 +157,6 @@ class DBHelper {
     return maps.map((m) => m['name'] as String).toList();
   }
 
-  // Fetches urgencies ordered strictly by their priority weight index
   static Future<List<Map<String, dynamic>>> getRawUrgencies() async {
     final db = await initDB();
     return await db.query('urgencies', orderBy: 'weight ASC');
@@ -171,7 +201,6 @@ class DBHelper {
 
   static Future<int> insertUrgency(String name, int weight) async {
     final db = await initDB();
-    // Shift weights down to carve space for custom placement values
     await db.execute(
       "UPDATE urgencies SET weight = weight + 1 WHERE weight >= ?",
       [weight],
@@ -273,8 +302,7 @@ class DBHelper {
         urgency: maps[i]['urgency'] ?? 'Today',
         deadline:
             (maps[i]['deadline'] == null ||
-                (maps[i]['deadline'] is String &&
-                    maps[i]['deadline'].toString().trim().isEmpty))
+                maps[i]['deadline'].toString().trim().isEmpty)
             ? null
             : maps[i]['deadline'],
         isRepeating: maps[i]['isRepeating'] ?? 0,
@@ -282,8 +310,7 @@ class DBHelper {
         noteType: maps[i]['noteType'] ?? 'text',
         attachmentPath:
             (maps[i]['attachmentPath'] == null ||
-                (maps[i]['attachmentPath'] is String &&
-                    maps[i]['attachmentPath'].toString().trim().isEmpty))
+                maps[i]['attachmentPath'].toString().trim().isEmpty)
             ? null
             : maps[i]['attachmentPath'],
       ),
