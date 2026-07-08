@@ -25,7 +25,10 @@ class _TaskScreenState extends State<TaskScreen> {
   final ScrollController _scrollController = ScrollController();
   final Map<int, GlobalKey> _itemKeys = {};
 
-  // Premium Palette Pool for cyclic dynamic distribution
+  List<String> selectedFilterCategories = [];
+  List<String> selectedFilterSubcategories = [];
+  List<String> selectedFilterUrgencies = [];
+
   final List<Color> _colorPalette = [
     Colors.blueAccent,
     Colors.indigoAccent,
@@ -64,7 +67,6 @@ class _TaskScreenState extends State<TaskScreen> {
     return urgencyWeights[urgency] ?? 99;
   }
 
-  // Pure deterministic string hashing loop to assign color wheels cyclically
   Color _getDeterministicColor(String value) {
     if (value.isEmpty || value == 'None') return Colors.grey[700]!;
     int hash = 0;
@@ -94,62 +96,68 @@ class _TaskScreenState extends State<TaskScreen> {
     Map<String, List<Task>> grouped = {};
     final now = DateTime.now();
 
-    // 1. Filter elements according to current search string constraints
     final filtered = allTasks.where((t) {
-      return t.title.toLowerCase().contains(searchQuery.toLowerCase()) ||
+      final matchesSearch =
+          t.title.toLowerCase().contains(searchQuery.toLowerCase()) ||
           t.description.toLowerCase().contains(searchQuery.toLowerCase());
+      if (!matchesSearch) return false;
+
+      // FILTER RULE: If parent category is filtered, but subcategory is empty, evaluate category fit
+      if (selectedFilterCategories.isNotEmpty &&
+          !selectedFilterCategories.contains(t.category)) {
+        return false;
+      }
+
+      // FILTER RULE: Evaluate subcategory precision arrays
+      if (selectedFilterSubcategories.isNotEmpty) {
+        String taskSub = t.subcategory.isEmpty ? 'None' : t.subcategory;
+        if (!selectedFilterSubcategories.contains(taskSub)) {
+          return false;
+        }
+      }
+
+      if (selectedFilterUrgencies.isNotEmpty &&
+          !selectedFilterUrgencies.contains(t.urgency)) {
+        return false;
+      }
+
+      return true;
     }).toList();
 
-    // 2. Perform advanced relational grouping sorting evaluation
     filtered.sort((a, b) {
-      // Helper function to resolve what structural block a task actively maps into
       String resolveActiveUrgencyTrack(Task task) {
         if (task.deadline == null) return task.urgency;
-
         final targetDate = DateTime.parse(task.deadline!);
         final difference = targetDate.difference(now);
+        if (difference.isNegative) return task.urgency;
 
-        if (difference.isNegative) {
-          return task.urgency; // Let overdue follow custom or handle gracefully
-        }
-
-        // Check chronological windows sequentially
         if (difference.inHours <= 6) return '⏰ Within 6 Hours';
         if (difference.inHours <= 12) return '⏰ Within 12 Hours';
         if (difference.inHours <= 24) return '⏰ Within 24 Hours';
         if (difference.inDays <= 7) return '⏰ Within 1 Week';
         if (difference.inDays <= 30) return '⏰ Within 1 Month';
-
         return task.urgency;
       }
 
       final trackA = resolveActiveUrgencyTrack(a);
       final trackB = resolveActiveUrgencyTrack(b);
-
       final weightA = _getWeight(trackA);
       final weightB = _getWeight(trackB);
 
-      // Primary Rank Check: Lower weight index means higher priority
       if (weightA != weightB) {
         return weightA.compareTo(weightB);
       }
-
-      // Micro-Level Tie-Breaker: Sort down to the exact minute if deadlines exist
       if (a.deadline != null && b.deadline != null) {
         return DateTime.parse(
           a.deadline!,
         ).compareTo(DateTime.parse(b.deadline!));
       }
-
       return 0;
     });
 
-    // 3. Construct map bins grouping by the verified source-of-truth track keys
     for (var task in filtered) {
-      String key = task.urgency; // Default group key mapping fallback
-
+      String key = task.urgency;
       if (groupMode == 'Urgency') {
-        // Evaluate dynamic time override state if sorting mode targets urgency
         if (task.deadline != null) {
           final targetDate = DateTime.parse(task.deadline!);
           final diff = targetDate.difference(now);
@@ -177,9 +185,332 @@ class _TaskScreenState extends State<TaskScreen> {
     return grouped;
   }
 
+  // FIXED: Dynamic Dropdown Multi-Select UI overlay sheet wrapper panel
+  // FIXED: Filter Sheet with Organized Category Headers inside the Subcategory Panel
+  void _showFilterModalSheet(BuildContext context) async {
+    List<String> availCats = await DBHelper.getCategories();
+    List<String> availUrgencies = await DBHelper.getUrgencies();
+
+    if (!context.mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.grey[950],
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 16,
+                right: 16,
+                top: 16,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Refine Workspace",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blueAccent,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            setModalState(() {
+                              selectedFilterCategories.clear();
+                              selectedFilterSubcategories.clear();
+                              selectedFilterUrgencies.clear();
+                            });
+                            setState(() {});
+                          },
+                          child: const Text(
+                            "Reset Filters",
+                            style: TextStyle(color: Colors.redAccent),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Divider(),
+
+                    // DROPDOWN 1: CATEGORIES MULTI-SELECT
+                    ExpansionTile(
+                      leading: const Icon(
+                        Icons.category,
+                        color: Colors.blueAccent,
+                        size: 20,
+                      ),
+                      title: Text(
+                        selectedFilterCategories.isEmpty
+                            ? "All Categories"
+                            : "Categories (${selectedFilterCategories.length} selected)",
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      subtitle: selectedFilterCategories.isNotEmpty
+                          ? Text(
+                              selectedFilterCategories.join(', '),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            )
+                          : null,
+                      children: availCats.map((cat) {
+                        final isSel = selectedFilterCategories.contains(cat);
+                        return CheckboxListTile(
+                          controlAffinity: ListTileControlAffinity.leading,
+                          title: Text(
+                            cat,
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                          value: isSel,
+                          onChanged: (bool? checked) {
+                            setModalState(() {
+                              if (checked == true) {
+                                selectedFilterCategories.add(cat);
+                              } else {
+                                selectedFilterCategories.remove(cat);
+                                // Safeguard: Clear out any subcategories belonging to this removed category
+                                selectedFilterSubcategories.clear();
+                              }
+                            });
+                            setState(() {});
+                          },
+                        );
+                      }).toList(),
+                    ),
+
+                    // DROPDOWN 2: SUBCATEGORIES WITH EXPLICIT HEADERS
+                    if (selectedFilterCategories.isNotEmpty)
+                      FutureBuilder<Map<String, List<String>>>(
+                        future: () async {
+                          Map<String, List<String>> structure = {};
+                          for (var cat in selectedFilterCategories) {
+                            var subs = await DBHelper.getSubcategories(cat);
+                            if (subs.isNotEmpty) {
+                              structure[cat] = subs;
+                            }
+                          }
+                          return structure;
+                        }(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) return const SizedBox.shrink();
+                          final structure = snapshot.data!;
+
+                          return ExpansionTile(
+                            leading: const Icon(
+                              Icons.layers,
+                              color: Colors.orangeAccent,
+                              size: 20,
+                            ),
+                            title: Text(
+                              selectedFilterSubcategories.isEmpty
+                                  ? "All Subcategories under selections"
+                                  : "Subcategories (${selectedFilterSubcategories.length} selected)",
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            subtitle: selectedFilterSubcategories.isNotEmpty
+                                ? Text(
+                                    selectedFilterSubcategories.join(', '),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  )
+                                : null,
+                            children: [
+                              // Global 'None' option at the very top of the list
+                              CheckboxListTile(
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
+                                title: const Text(
+                                  "None (No Subcategory)",
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                                value: selectedFilterSubcategories.contains(
+                                  'None',
+                                ),
+                                onChanged: (bool? checked) {
+                                  setModalState(() {
+                                    checked == true
+                                        ? selectedFilterSubcategories.add(
+                                            'None',
+                                          )
+                                        : selectedFilterSubcategories.remove(
+                                            'None',
+                                          );
+                                  });
+                                  setState(() {});
+                                },
+                              ),
+                              const Divider(
+                                height: 1,
+                                indent: 16,
+                                endIndent: 16,
+                              ),
+
+                              // Build out section-headers iteratively for each selected category tracking line
+                              ...structure.entries.map((entry) {
+                                final parentCategoryName = entry.key;
+                                final subcategoriesList = entry.value;
+
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        24,
+                                        12,
+                                        16,
+                                        4,
+                                      ),
+                                      child: Text(
+                                        parentCategoryName.toUpperCase(),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: _getDeterministicColor(
+                                            parentCategoryName,
+                                          ),
+                                          letterSpacing: 1.0,
+                                        ),
+                                      ),
+                                    ),
+                                    ...subcategoriesList.map((sub) {
+                                      final isSel = selectedFilterSubcategories
+                                          .contains(sub);
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 12,
+                                        ), // Indent items to show grouping clearly
+                                        child: CheckboxListTile(
+                                          controlAffinity:
+                                              ListTileControlAffinity.leading,
+                                          title: Text(
+                                            sub,
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                          value: isSel,
+                                          onChanged: (bool? checked) {
+                                            setModalState(() {
+                                              checked == true
+                                                  ? selectedFilterSubcategories
+                                                        .add(sub)
+                                                  : selectedFilterSubcategories
+                                                        .remove(sub);
+                                            });
+                                            setState(() {});
+                                          },
+                                        ),
+                                      );
+                                    }),
+                                  ],
+                                );
+                              }),
+                            ],
+                          );
+                        },
+                      ),
+
+                    // DROPDOWN 3: URGENCY SELECTION TRACK
+                    ExpansionTile(
+                      leading: const Icon(
+                        Icons.low_priority,
+                        color: Colors.purpleAccent,
+                        size: 20,
+                      ),
+                      title: Text(
+                        selectedFilterUrgencies.isEmpty
+                            ? "All Urgency Tiers"
+                            : "Urgencies (${selectedFilterUrgencies.length} selected)",
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      subtitle: selectedFilterUrgencies.isNotEmpty
+                          ? Text(
+                              selectedFilterUrgencies.join(', '),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            )
+                          : null,
+                      children: availUrgencies
+                          .where((u) => !u.startsWith('⏰'))
+                          .map((urg) {
+                            final isSel = selectedFilterUrgencies.contains(urg);
+                            return CheckboxListTile(
+                              controlAffinity: ListTileControlAffinity.leading,
+                              title: Text(
+                                urg,
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                              value: isSel,
+                              onChanged: (bool? checked) {
+                                setModalState(() {
+                                  checked == true
+                                      ? selectedFilterUrgencies.add(urg)
+                                      : selectedFilterUrgencies.remove(urg);
+                                });
+                                setState(() {});
+                              },
+                            );
+                          })
+                          .toList(),
+                    ),
+
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 48),
+                        backgroundColor: Colors.blueAccent,
+                      ),
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text(
+                        "APPLY FILTERS",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final groupedTasks = _getGroupedTasks();
+    final bool isFilteredActive =
+        selectedFilterCategories.isNotEmpty ||
+        selectedFilterSubcategories.isNotEmpty ||
+        selectedFilterUrgencies.isNotEmpty;
+
     return Scaffold(
       appBar: AppBar(
         title: isSearching
@@ -200,6 +531,14 @@ class _TaskScreenState extends State<TaskScreen> {
               isSearching = !isSearching;
               if (!isSearching) searchQuery = "";
             }),
+          ),
+          IconButton(
+            icon: Icon(
+              Icons.filter_alt,
+              color: isFilteredActive ? Colors.amberAccent : Colors.white,
+            ),
+            tooltip: 'Filter Context Space',
+            onPressed: () => _showFilterModalSheet(context),
           ),
           TextButton.icon(
             icon: const Icon(Icons.swap_horiz, color: Colors.blueAccent),
@@ -396,7 +735,6 @@ class _TaskScreenState extends State<TaskScreen> {
       );
     }
 
-    // Extraction vectors for continuous gap-free leftmost army-badge strips
     final Color categoryColor = _getDeterministicColor(task.category);
     final Color subcategoryColor = _getDeterministicColor(task.subcategory);
     final Color urgencyColor = _getUrgencyColor(task.urgency);
@@ -404,13 +742,11 @@ class _TaskScreenState extends State<TaskScreen> {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       color: Colors.grey[900],
-      clipBehavior:
-          Clip.antiAlias, // Ensures the bars don't bleed past container borders
+      clipBehavior: Clip.antiAlias,
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // NEW: The Army-Badge Vertical Strip Cluster (Left, Middle, Right) with zero gaps
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -419,8 +755,6 @@ class _TaskScreenState extends State<TaskScreen> {
                 Container(width: 4, color: urgencyColor),
               ],
             ),
-
-            // Core Tile Body Contents Wrapper
             Expanded(
               child: ExpansionTile(
                 title: Text(
