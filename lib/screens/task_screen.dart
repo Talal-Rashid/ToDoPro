@@ -92,17 +92,85 @@ class _TaskScreenState extends State<TaskScreen> {
 
   Map<String, List<Task>> _getGroupedTasks() {
     Map<String, List<Task>> grouped = {};
+    final now = DateTime.now();
+
+    // 1. Filter elements according to current search string constraints
     final filtered = allTasks.where((t) {
       return t.title.toLowerCase().contains(searchQuery.toLowerCase()) ||
           t.description.toLowerCase().contains(searchQuery.toLowerCase());
     }).toList();
 
-    filtered.sort(
-      (a, b) => _getWeight(a.urgency).compareTo(_getWeight(b.urgency)),
-    );
+    // 2. Perform advanced relational grouping sorting evaluation
+    filtered.sort((a, b) {
+      // Helper function to resolve what structural block a task actively maps into
+      String resolveActiveUrgencyTrack(Task task) {
+        if (task.deadline == null) return task.urgency;
 
+        final targetDate = DateTime.parse(task.deadline!);
+        final difference = targetDate.difference(now);
+
+        if (difference.isNegative) {
+          return task.urgency; // Let overdue follow custom or handle gracefully
+        }
+
+        // Check chronological windows sequentially
+        if (difference.inHours <= 6) return '⏰ Within 6 Hours';
+        if (difference.inHours <= 12) return '⏰ Within 12 Hours';
+        if (difference.inHours <= 24) return '⏰ Within 24 Hours';
+        if (difference.inDays <= 7) return '⏰ Within 1 Week';
+        if (difference.inDays <= 30) return '⏰ Within 1 Month';
+
+        return task.urgency;
+      }
+
+      final trackA = resolveActiveUrgencyTrack(a);
+      final trackB = resolveActiveUrgencyTrack(b);
+
+      final weightA = _getWeight(trackA);
+      final weightB = _getWeight(trackB);
+
+      // Primary Rank Check: Lower weight index means higher priority
+      if (weightA != weightB) {
+        return weightA.compareTo(weightB);
+      }
+
+      // Micro-Level Tie-Breaker: Sort down to the exact minute if deadlines exist
+      if (a.deadline != null && b.deadline != null) {
+        return DateTime.parse(
+          a.deadline!,
+        ).compareTo(DateTime.parse(b.deadline!));
+      }
+
+      return 0;
+    });
+
+    // 3. Construct map bins grouping by the verified source-of-truth track keys
     for (var task in filtered) {
-      String key = groupMode == 'Urgency' ? task.urgency : task.category;
+      String key = task.urgency; // Default group key mapping fallback
+
+      if (groupMode == 'Urgency') {
+        // Evaluate dynamic time override state if sorting mode targets urgency
+        if (task.deadline != null) {
+          final targetDate = DateTime.parse(task.deadline!);
+          final diff = targetDate.difference(now);
+          if (!diff.isNegative) {
+            if (diff.inHours <= 6) {
+              key = '⏰ Within 6 Hours';
+            } else if (diff.inHours <= 12) {
+              key = '⏰ Within 12 Hours';
+            } else if (diff.inHours <= 24) {
+              key = '⏰ Within 24 Hours';
+            } else if (diff.inDays <= 7) {
+              key = '⏰ Within 1 Week';
+            } else if (diff.inDays <= 30) {
+              key = '⏰ Within 1 Month';
+            }
+          }
+        }
+      } else {
+        key = task.category;
+      }
+
       if (!grouped.containsKey(key)) grouped[key] = [];
       grouped[key]!.add(task);
     }

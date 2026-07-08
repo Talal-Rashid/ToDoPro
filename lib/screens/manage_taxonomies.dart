@@ -10,13 +10,23 @@ class ManageTaxonomies extends StatefulWidget {
 
 class _ManageTaxonomiesState extends State<ManageTaxonomies> {
   List<String> categories = [];
-  List<String> urgencies = [];
+  // Holds unified list of custom tiers mixed with system time anchors
+  List<String> unifiedUrgencies = [];
   List<String> activeSubcategories = [];
   String? selectedCategoryForSubs;
 
   final TextEditingController _catCtl = TextEditingController();
   final TextEditingController _urgCtl = TextEditingController();
   final TextEditingController _subCtl = TextEditingController();
+
+  // Immutable reference markers for system chronological time boundaries
+  final List<String> _chronoAnchors = [
+    '⏰ Within 6 Hours',
+    '⏰ Within 12 Hours',
+    '⏰ Within 24 Hours',
+    '⏰ Within 1 Week',
+    '⏰ Within 1 Month',
+  ];
 
   @override
   void initState() {
@@ -26,7 +36,20 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
 
   Future<void> _load() async {
     categories = await DBHelper.getCategories();
-    urgencies = await DBHelper.getUrgencies();
+    List<String> dbUrgencies = await DBHelper.getUrgencies();
+
+    // Construct unified tracking array avoiding duplicate anchor insertions
+    List<String> rawList = [];
+    for (var item in dbUrgencies) {
+      rawList.add(item);
+    }
+
+    // If database is initialized or cleared, ensure anchors exist in memory list
+    for (var anchor in _chronoAnchors) {
+      if (!rawList.contains(anchor)) {
+        rawList.add(anchor);
+      }
+    }
 
     if (selectedCategoryForSubs == null && categories.isNotEmpty) {
       selectedCategoryForSubs = categories.first;
@@ -37,12 +60,20 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
         selectedCategoryForSubs!,
       );
     }
-    setState(() {});
+    setState(() {
+      unifiedUrgencies = rawList;
+    });
   }
 
   Future<void> _updateUrgencyOrder() async {
-    for (int i = 0; i < urgencies.length; i++) {
-      await DBHelper.updateUrgencyWeight(urgencies[i], i);
+    // Process entire unified hierarchy chain and map position indices to database weights
+    for (int i = 0; i < unifiedUrgencies.length; i++) {
+      String name = unifiedUrgencies[i];
+      if (_chronoAnchors.contains(name)) {
+        // If it's a dynamic time anchor, upsert its record or force check its tracking
+        await DBHelper.insertUrgency(name, i);
+      }
+      await DBHelper.updateUrgencyWeight(name, i);
     }
     _load();
   }
@@ -150,8 +181,8 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
                             DropdownButtonFormField<String>(
                               initialValue:
                                   categories.contains(selectedCategoryForSubs)
-                                      ? selectedCategoryForSubs
-                                      : categories.first,
+                                  ? selectedCategoryForSubs
+                                  : categories.first,
                               decoration: const InputDecoration(
                                 labelText: "Parent Category",
                                 border: OutlineInputBorder(),
@@ -252,7 +283,7 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
             ),
           ),
 
-          // PANEL 3: DRAGGABLE HIERARCHY
+          // PANEL 3: DRAGGABLE HIERARCHY WITH TIMELINE ANCHORS
           Card(
             color: Colors.grey[900],
             child: ExpansionTile(
@@ -269,24 +300,33 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
                       const Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          'Drag items to sort compilation ranking priority.',
+                          'Drag your custom tiers relative to system chronological timestamps.',
                           style: TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                       ),
                       const SizedBox(height: 8),
                       SizedBox(
-                        height: urgencies.length * 52.0,
+                        height: unifiedUrgencies.length * 52.0,
                         child: ReorderableListView.builder(
                           physics: const NeverScrollableScrollPhysics(),
-                          itemCount: urgencies.length,
+                          itemCount: unifiedUrgencies.length,
+                          // NEW: Built-in instant-grab configuration
+                          buildDefaultDragHandles: false,
                           itemBuilder: (context, index) {
-                            final u = urgencies[index];
+                            final u = unifiedUrgencies[index];
+                            final bool isAnchor = _chronoAnchors.contains(u);
+
                             return ListTile(
                               key: ValueKey('urg_$u'),
                               dense: true,
                               visualDensity: VisualDensity.compact,
+                              tileColor: isAnchor
+                                  ? Colors.blueGrey.withValues(alpha: 0.15)
+                                  : null,
                               leading: CircleAvatar(
-                                backgroundColor: Colors.blueGrey[850],
+                                backgroundColor: isAnchor
+                                    ? Colors.blueAccent
+                                    : Colors.blueGrey[850],
                                 radius: 11,
                                 child: Text(
                                   '${index + 1}',
@@ -299,19 +339,64 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
                               ),
                               title: Text(
                                 u,
-                                style: const TextStyle(fontSize: 14),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: isAnchor
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: isAnchor
+                                      ? Colors.blueAccent
+                                      : Colors.white,
+                                ),
                               ),
-                              trailing: const Icon(
-                                Icons.drag_handle,
-                                color: Colors.grey,
-                                size: 20,
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (!isAnchor)
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete_outline,
+                                        size: 16,
+                                        color: Colors.redAccent,
+                                      ),
+                                      onPressed: () async {
+                                        await DBHelper.deleteUrgency(u);
+                                        _load();
+                                      },
+                                    ),
+                                  // FIXED: Wrap the listener in a premium raw pointer behavior interceptor
+                                  Listener(
+                                    behavior: HitTestBehavior.opaque,
+                                    onPointerDown: (_) {
+                                      // Explicitly focus primary node instantly upon touch boundary registration
+                                      FocusScope.of(context).unfocus();
+                                    },
+                                    child: ReorderableDragStartListener(
+                                      index: index,
+                                      child: const Padding(
+                                        padding: EdgeInsets.fromLTRB(
+                                          12,
+                                          14,
+                                          4,
+                                          14,
+                                        ), // Expanded touch canvas
+                                        child: Icon(
+                                          Icons.drag_handle,
+                                          color: Colors
+                                              .blueAccent, // Color indicator update for premium feedback
+                                          size: 22,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             );
                           },
                           onReorderItem: (oldIndex, newIndex) {
                             setState(() {
-                              final item = urgencies.removeAt(oldIndex);
-                              urgencies.insert(newIndex, item);
+                              final item = unifiedUrgencies.removeAt(oldIndex);
+                              unifiedUrgencies.insert(newIndex, item);
                             });
                             _updateUrgencyOrder();
                           },
@@ -323,7 +408,7 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
                             child: TextField(
                               controller: _urgCtl,
                               decoration: const InputDecoration(
-                                hintText: 'Add custom ranking tier...',
+                                hintText: 'Add custom urgency ranking tier...',
                               ),
                             ),
                           ),
@@ -335,12 +420,15 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
                             ),
                             onPressed: () async {
                               if (_urgCtl.text.trim().isNotEmpty) {
-                                await DBHelper.insertUrgency(
-                                  _urgCtl.text.trim(),
-                                  urgencies.length,
-                                );
-                                _urgCtl.clear();
-                                _load();
+                                String cleanText = _urgCtl.text.trim();
+                                if (!_chronoAnchors.contains(cleanText)) {
+                                  await DBHelper.insertUrgency(
+                                    cleanText,
+                                    unifiedUrgencies.length,
+                                  );
+                                  _urgCtl.clear();
+                                  _load();
+                                }
                               }
                             },
                           ),
@@ -352,10 +440,6 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
               ],
             ),
           ),
-
-          // FUTURE EXPANSION SLOTS PREPARED HERE
-          // Card(child: ExpansionTile(leading: Icon(Icons.dark_mode), title: Text("Appearance (Theme)"))),
-          // Card(child: ExpansionTile(leading: Icon(Icons.account_circle), title: Text("Account & Cloud Sync"))),
         ],
       ),
     );
