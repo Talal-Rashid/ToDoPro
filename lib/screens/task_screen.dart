@@ -503,21 +503,23 @@ class _TaskScreenState extends State<TaskScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
           color: isActive ? activeColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: activeColor, width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(icon, size: 13, color: isActive ? Colors.black : activeColor),
+            Icon(icon, size: 12, color: isActive ? Colors.black : activeColor),
             const SizedBox(width: 4),
             Text(
               label,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 10.5,
+                height: 1.1,
                 fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                 color: isActive ? Colors.black : Colors.white,
               ),
@@ -530,10 +532,11 @@ class _TaskScreenState extends State<TaskScreen> {
 
   // THE 5-LINE IMMERSIVE FOCUSED OVERLAY ENGINE
   void _showFocusedTaskOverlay(BuildContext context, Task task) {
-    final TextEditingController subTaskCtl = TextEditingController();
     final TextEditingController descCtl =
         TextEditingController(text: task.description);
     bool isDescExpanded = false;
+    int? editingSubTaskId;
+    TextEditingController? editingSubTitleController;
 
     showGeneralDialog(
       context: context,
@@ -550,8 +553,8 @@ class _TaskScreenState extends State<TaskScreen> {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 32,
+                  horizontal: 14,
+                  vertical: 20,
                 ),
                 child: Hero(
                   tag: 'task_card_${task.id}',
@@ -562,7 +565,7 @@ class _TaskScreenState extends State<TaskScreen> {
                       child: Material(
                         color: const Color(0xFF0C0C0C).withValues(alpha: 0.9),
                         child: Container(
-                          padding: const EdgeInsets.all(24),
+                          padding: const EdgeInsets.all(12),
                           width: double.infinity,
                           constraints: BoxConstraints(
                             maxHeight: MediaQuery.of(context).size.height * 0.8,
@@ -600,7 +603,7 @@ class _TaskScreenState extends State<TaskScreen> {
                               ),
                               const SizedBox(height: 12),
 
-                              Expanded(
+                              Flexible(
                                 child: SingleChildScrollView(
                                   child: Column(
                                     crossAxisAlignment:
@@ -622,17 +625,38 @@ class _TaskScreenState extends State<TaskScreen> {
                                                 task.category,
                                               ).withValues(alpha: 0.2),
                                               borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                            child: Text(
-                                              task.category,
-                                              style: TextStyle(
-                                                fontSize: 11,
+                                                  BorderRadius.circular(20),
+                                              border: Border.all(
                                                 color: _getDeterministicColor(
                                                   task.category,
-                                                ),
-                                                fontWeight: FontWeight.bold,
+                                                ).withValues(alpha: 0.4),
+                                                width: 1,
                                               ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              crossAxisAlignment: CrossAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  Icons.folder_outlined,
+                                                  size: 12,
+                                                  color: _getDeterministicColor(
+                                                    task.category,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  task.category,
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    height: 1.1,
+                                                    color: _getDeterministicColor(
+                                                      task.category,
+                                                    ),
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
                                           if (task.subcategory.isNotEmpty)
@@ -647,17 +671,39 @@ class _TaskScreenState extends State<TaskScreen> {
                                                   task.subcategory,
                                                 ).withValues(alpha: 0.2),
                                                 borderRadius:
-                                                    BorderRadius.circular(6),
-                                              ),
-                                              child: Text(
-                                                task.subcategory,
-                                                style: TextStyle(
-                                                  fontSize: 11,
+                                                    BorderRadius.circular(20),
+                                                border: Border.all(
                                                   color: _getDeterministicColor(
                                                     task.subcategory,
-                                                  ),
-                                                  fontWeight: FontWeight.bold,
+                                                  ).withValues(alpha: 0.4),
+                                                  width: 1,
                                                 ),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                crossAxisAlignment: CrossAxisAlignment.center,
+                                                children: [
+                                                  Icon(
+                                                    Icons.layers_outlined,
+                                                    size: 12,
+                                                    color: _getDeterministicColor(
+                                                      task.subcategory,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    task.subcategory,
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      height: 1.1,
+                                                      color: _getDeterministicColor(
+                                                        task.subcategory,
+                                                      ),
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
                                           Container(
@@ -670,16 +716,36 @@ class _TaskScreenState extends State<TaskScreen> {
                                                 task.urgency,
                                               ).withValues(alpha: 0.2),
                                               borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                            child: Text(
-                                              task.urgency,
-                                              style: TextStyle(
-                                                fontSize: 11,
+                                                  BorderRadius.circular(20),
+                                              border: Border.all(
                                                 color: _getUrgencyColor(
-                                                    task.urgency),
-                                                fontWeight: FontWeight.bold,
+                                                  task.urgency,
+                                                ).withValues(alpha: 0.4),
+                                                width: 1,
                                               ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              crossAxisAlignment: CrossAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  Icons.star_outline,
+                                                  size: 12,
+                                                  color: _getUrgencyColor(
+                                                      task.urgency),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  task.urgency,
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    height: 1.1,
+                                                    color: _getUrgencyColor(
+                                                        task.urgency),
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
                                         ],
@@ -688,7 +754,7 @@ class _TaskScreenState extends State<TaskScreen> {
 
                                       // LINE 3: Full-Status Grid Matrix (Persistent Custom Colors Vector Framework)
                                       Wrap(
-                                        spacing: 8,
+                                        spacing: 6,
                                         runSpacing: 6,
                                         children: [
                                           _buildStatusMatrixPill(
@@ -853,145 +919,307 @@ class _TaskScreenState extends State<TaskScreen> {
                                         ),
                                       ),
 
-                                      // LINE 5 ONWARDS: Subtasks Integration Tree View
-                                      FutureBuilder<List<SubTask>>(
-                                        future: DBHelper.getSubTasks(task.id!),
-                                        builder: (context, snapshot) {
-                                          if (!snapshot.hasData) {
-                                            return const Center(
-                                              child:
-                                                  CircularProgressIndicator(),
-                                            );
-                                          }
-                                          final subtasksList = snapshot.data!;
+                                       // LINE 5 ONWARDS: Subtasks Integration Tree View
+                                       FutureBuilder<List<SubTask>>(
+                                         future: DBHelper.getSubTasks(task.id!),
+                                         builder: (context, snapshot) {
+                                           if (!snapshot.hasData) {
+                                             return const Center(
+                                               child:
+                                                   CircularProgressIndicator(),
+                                             );
+                                           }
+                                           final subtasksList = snapshot.data!;
 
-                                          if (subtasksList.isEmpty) {
-                                            return const Center(
-                                              child: Text(
-                                                "No objectives added yet.",
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.grey,
-                                                ),
-                                              ),
-                                            );
-                                          }
+                                           return Column(
+                                             mainAxisSize: MainAxisSize.min,
+                                             children: [
+                                               if (subtasksList.isNotEmpty)
+                                                 ListView.builder(
+                                                   shrinkWrap: true,
+                                                   padding: EdgeInsets.zero,
+                                                   physics:
+                                                       const NeverScrollableScrollPhysics(),
+                                                   itemCount: subtasksList.length,
+                                                   itemBuilder: (context, sIdx) {
+                                                     final sub = subtasksList[sIdx];
+                                                     if (sub.id != null && sub.id == editingSubTaskId) {
+                                                       editingSubTitleController ??= TextEditingController(text: sub.title);
+                                                       final Color categoryColor = _getDeterministicColor(task.category);
+                                                       final Color subcategoryColor = _getDeterministicColor(task.subcategory);
+                                                       final Color urgencyColor = _getUrgencyColor(sub.urgency);
 
-                                          return ListView.builder(
-                                            shrinkWrap: true,
-                                            physics:
-                                                const NeverScrollableScrollPhysics(),
-                                            itemCount: subtasksList.length,
-                                            itemBuilder: (context, sIdx) {
-                                              final sub = subtasksList[sIdx];
-                                              return ListTile(
-                                                contentPadding:
-                                                    EdgeInsets.zero,
-                                                dense: true,
-                                                leading: Checkbox(
-                                                  value: sub.isCompleted == 1,
-                                                  onChanged:
-                                                      (bool? val) async {
-                                                    sub.isCompleted =
-                                                        val == true ? 1 : 0;
-                                                    await DBHelper.updateSubTask(
-                                                        sub);
+                                                       return Card(
+                                                         margin: const EdgeInsets.symmetric(vertical: 4),
+                                                         color: Colors.grey[900],
+                                                         clipBehavior: Clip.antiAlias,
+                                                         child: IntrinsicHeight(
+                                                           child: Row(
+                                                             crossAxisAlignment: CrossAxisAlignment.stretch,
+                                                             children: [
+                                                               // Leftmost side-by-side tri-color army badge tracking strips
+                                                               Row(
+                                                                 mainAxisSize: MainAxisSize.min,
+                                                                 children: [
+                                                                   Container(width: 3, color: categoryColor),
+                                                                   Container(width: 3, color: subcategoryColor),
+                                                                   Container(width: 3, color: urgencyColor),
+                                                                 ],
+                                                               ),
+                                                               Expanded(
+                                                                 child: Padding(
+                                                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                                                   child: Row(
+                                                                     children: [
+                                                                       Expanded(
+                                                                         child: TextField(
+                                                                           controller: editingSubTitleController,
+                                                                           autofocus: true,
+                                                                           maxLines: 1,
+                                                                           textInputAction: TextInputAction.done,
+                                                                           style: const TextStyle(fontSize: 13, color: Colors.white),
+                                                                           decoration: const InputDecoration(
+                                                                             hintText: "Subtask title...",
+                                                                             border: InputBorder.none,
+                                                                             isDense: true,
+                                                                           ),
+                                                                           onSubmitted: (v) async {
+                                                                             final titleText = v.trim();
+                                                                             if (titleText.isNotEmpty) {
+                                                                               sub.title = titleText;
+                                                                               await DBHelper.updateSubTask(sub);
 
-                                                    var updatedTasks =
-                                                        await DBHelper
-                                                            .getTasks();
-                                                    var checkedParentState =
-                                                        updatedTasks.firstWhere(
-                                                      (e) => e.id == task.id,
-                                                    );
+                                                                               // Spawn next inline editor!
+                                                                               SubTask nextSub = SubTask(
+                                                                                 parentId: task.id!,
+                                                                                 title: '',
+                                                                                 urgency: task.urgency,
+                                                                                 syncToCalendar: task.syncToCalendar,
+                                                                                 setNotification: task.setNotification,
+                                                                                 setAlarm: task.setAlarm,
+                                                                                 repeatType: task.repeatType,
+                                                                               );
+                                                                               final nextId = await DBHelper.insertSubTask(nextSub);
+                                                                               setOverlayState(() {
+                                                                                 editingSubTaskId = nextId;
+                                                                                 editingSubTitleController = TextEditingController(text: '');
+                                                                               });
+                                                                             }
+                                                                           },
+                                                                         ),
+                                                                       ),
+                                                                       IconButton(
+                                                                         icon: const Icon(Icons.check, color: Colors.green, size: 18),
+                                                                         onPressed: () async {
+                                                                           final titleText = (editingSubTitleController?.text ?? '').trim();
+                                                                           if (titleText.isEmpty) {
+                                                                             await DBHelper.deleteSubTask(sub.id!);
+                                                                             setOverlayState(() {
+                                                                               editingSubTaskId = null;
+                                                                               editingSubTitleController = null;
+                                                                             });
+                                                                           } else {
+                                                                             sub.title = titleText;
+                                                                             await DBHelper.updateSubTask(sub);
+                                                                             setOverlayState(() {
+                                                                               editingSubTaskId = null;
+                                                                               editingSubTitleController = null;
+                                                                             });
+                                                                           }
+                                                                         },
+                                                                       ),
+                                                                     ],
+                                                                   ),
+                                                                 ),
+                                                               ),
+                                                             ],
+                                                           ),
+                                                         ),
+                                                       );
+                                                     }
 
-                                                    if (checkedParentState
-                                                            .isCompleted ==
-                                                        1) {
-                                                      if (dialogCtx.mounted) {
-                                                        Navigator.pop(
-                                                            dialogCtx);
-                                                      }
-                                                    } else {
-                                                      setOverlayState(() {});
-                                                    }
-                                                    _refresh();
-                                                  },
-                                                ),
-                                                title: Text(
-                                                  sub.title,
-                                                  style: TextStyle(
-                                                    fontSize: 13,
-                                                    color: const Color(
-                                                        0xE6FFFFFF),
-                                                    decoration:
-                                                        sub.isCompleted == 1
-                                                            ? TextDecoration
-                                                                .lineThrough
-                                                            : null,
-                                                  ),
-                                                ),
-                                                trailing: IconButton(
-                                                  icon: const Icon(
-                                                    Icons.remove_circle_outline,
-                                                    size: 16,
-                                                    color: Colors.redAccent,
-                                                  ),
-                                                  onPressed: () async {
-                                                    await DBHelper
-                                                        .deleteSubTask(
-                                                            sub.id!);
-                                                    setOverlayState(() {});
-                                                  },
-                                                ),
-                                              );
-                                            },
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
+                                                     final Color categoryColor = _getDeterministicColor(task.category);
+                                                     final Color subcategoryColor = _getDeterministicColor(task.subcategory);
+                                                     final Color urgencyColor = _getUrgencyColor(sub.urgency);
 
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8.0),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: TextField(
-                                        controller: subTaskCtl,
-                                        style: const TextStyle(fontSize: 13),
-                                        decoration: const InputDecoration(
-                                          hintText: "Add nested objective...",
-                                          border: UnderlineInputBorder(),
-                                          isDense: true,
-                                        ),
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.add_box_rounded,
-                                        color: Colors.green,
-                                        size: 24,
-                                      ),
-                                      onPressed: () async {
-                                        if (subTaskCtl.text.trim().isNotEmpty) {
-                                          await DBHelper.insertSubTask(
-                                            SubTask(
-                                              parentId: task.id!,
-                                              title: subTaskCtl.text.trim(),
-                                            ),
-                                          );
-                                          subTaskCtl.clear();
-                                          setOverlayState(() {});
-                                        }
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                                                     return Card(
+                                                       margin: const EdgeInsets.symmetric(vertical: 4),
+                                                       color: Colors.grey[900],
+                                                       clipBehavior: Clip.antiAlias,
+                                                       child: IntrinsicHeight(
+                                                         child: Row(
+                                                           crossAxisAlignment: CrossAxisAlignment.stretch,
+                                                           children: [
+                                                             // Leftmost side-by-side tri-color army badge tracking strips
+                                                             Row(
+                                                               mainAxisSize: MainAxisSize.min,
+                                                               children: [
+                                                                 Container(width: 3, color: categoryColor),
+                                                                 Container(width: 3, color: subcategoryColor),
+                                                                 Container(width: 3, color: urgencyColor),
+                                                               ],
+                                                             ),
+                                                             Expanded(
+                                                               child: Padding(
+                                                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                                                 child: Column(
+                                                                   mainAxisSize: MainAxisSize.min,
+                                                                   crossAxisAlignment: CrossAxisAlignment.start,
+                                                                   children: [
+                                                                     Row(
+                                                                       children: [
+                                                                         Checkbox(
+                                                                           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                                           visualDensity: VisualDensity.compact,
+                                                                           value: sub.isCompleted == 1,
+                                                                           onChanged: (bool? val) async {
+                                                                             sub.isCompleted = val == true ? 1 : 0;
+                                                                             await DBHelper.updateSubTask(sub);
+
+                                                                             var updatedTasks = await DBHelper.getTasks();
+                                                                             var checkedParentState = updatedTasks.firstWhere((e) => e.id == task.id);
+                                                                             if (checkedParentState.isCompleted == 1) {
+                                                                               if (dialogCtx.mounted) {
+                                                                                 Navigator.pop(dialogCtx);
+                                                                               }
+                                                                             } else {
+                                                                               setOverlayState(() {});
+                                                                             }
+                                                                             _refresh();
+                                                                           },
+                                                                         ),
+                                                                         Expanded(
+                                                                           child: InkWell(
+                                                                             onTap: () {
+                                                                               setOverlayState(() {
+                                                                                 editingSubTaskId = sub.id;
+                                                                                 editingSubTitleController = TextEditingController(text: sub.title);
+                                                                               });
+                                                                             },
+                                                                             child: Text(
+                                                                               sub.title.isEmpty ? '(no title)' : sub.title,
+                                                                               style: TextStyle(
+                                                                                 fontSize: 13,
+                                                                                 color: const Color(0xE6FFFFFF),
+                                                                                 decoration: sub.isCompleted == 1
+                                                                                     ? TextDecoration.lineThrough
+                                                                                     : null,
+                                                                               ),
+                                                                             ),
+                                                                           ),
+                                                                         ),
+                                                                         IconButton(
+                                                                           icon: const Icon(
+                                                                             Icons.remove_circle_outline,
+                                                                             size: 16,
+                                                                             color: Colors.redAccent,
+                                                                           ),
+                                                                           onPressed: () async {
+                                                                             await DBHelper.deleteSubTask(sub.id!);
+                                                                             setOverlayState(() {});
+                                                                           },
+                                                                         ),
+                                                                       ],
+                                                                     ),
+                                                                     Padding(
+                                                                       padding: const EdgeInsets.only(left: 36, top: 4, bottom: 4),
+                                                                       child: Wrap(
+                                                                         spacing: 6,
+                                                                         runSpacing: 4,
+                                                                         children: [
+                                                                           _buildSubTaskUrgencyPill(sub, setOverlayState),
+                                                                           _buildSubTaskReminderPill(
+                                                                             icon: Icons.calendar_month,
+                                                                             isActive: sub.syncToCalendar == 1,
+                                                                             activeColor: Colors.blueAccent,
+                                                                             onTap: () async {
+                                                                               sub.syncToCalendar = sub.syncToCalendar == 1 ? 0 : 1;
+                                                                               await DBHelper.updateSubTask(sub);
+                                                                               setOverlayState(() {});
+                                                                             },
+                                                                           ),
+                                                                           _buildSubTaskReminderPill(
+                                                                             icon: Icons.notifications_active,
+                                                                             isActive: sub.setNotification == 1,
+                                                                             activeColor: Colors.amber,
+                                                                             onTap: () async {
+                                                                               sub.setNotification = sub.setNotification == 1 ? 0 : 1;
+                                                                               await DBHelper.updateSubTask(sub);
+                                                                               setOverlayState(() {});
+                                                                             },
+                                                                           ),
+                                                                           _buildSubTaskReminderPill(
+                                                                             icon: Icons.alarm,
+                                                                             isActive: sub.setAlarm == 1,
+                                                                             activeColor: Colors.redAccent,
+                                                                             onTap: () async {
+                                                                               sub.setAlarm = sub.setAlarm == 1 ? 0 : 1;
+                                                                               await DBHelper.updateSubTask(sub);
+                                                                               setOverlayState(() {});
+                                                                             },
+                                                                           ),
+                                                                         ],
+                                                                       ),
+                                                                     ),
+                                                                   ],
+                                                                 ),
+                                                               ),
+                                                             ),
+                                                           ],
+                                                         ),
+                                                       ),
+                                                     );
+                                                   },
+                                                 ),
+                                               if (editingSubTaskId == null)
+                                                 InkWell(
+                                                   onTap: () async {
+                                                     SubTask sub = SubTask(
+                                                       parentId: task.id!,
+                                                       title: '',
+                                                       urgency: task.urgency,
+                                                       syncToCalendar: task.syncToCalendar,
+                                                       setNotification: task.setNotification,
+                                                       setAlarm: task.setAlarm,
+                                                       repeatType: task.repeatType,
+                                                     );
+                                                     final id = await DBHelper.insertSubTask(sub);
+                                                     sub.id = id;
+                                                     setOverlayState(() {
+                                                       editingSubTaskId = id;
+                                                       editingSubTitleController = TextEditingController(text: '');
+                                                     });
+                                                   },
+                                                   child: const Padding(
+                                                     padding: EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                                                     child: Row(
+                                                       children: [
+                                                         Icon(
+                                                           Icons.add_circle_outline,
+                                                           color: Colors.green,
+                                                           size: 16,
+                                                         ),
+                                                         SizedBox(width: 8),
+                                                         Text(
+                                                           'Add new subtask...',
+                                                           style: TextStyle(
+                                                             color: Colors.green,
+                                                             fontSize: 13,
+                                                           ),
+                                                         ),
+                                                       ],
+                                                     ),
+                                                   ),
+                                                 ),
+                                             ],
+                                           );
+                                         },
+                                       ),
+                                     ],
+                                   ),
+                                 ),
+                               ),
+                             ],
                           ),
                         ),
                       ),
@@ -2064,6 +2292,69 @@ class _TaskScreenState extends State<TaskScreen> {
         );
       },
     ).then((_) => _refresh());
+  }
+
+  Widget _buildSubTaskReminderPill({
+    required IconData icon,
+    required bool isActive,
+    required Color activeColor,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        decoration: BoxDecoration(
+          color: isActive ? activeColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: activeColor, width: 1),
+        ),
+        child: Icon(
+          icon,
+          size: 11,
+          color: isActive ? Colors.black : activeColor,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubTaskUrgencyPill(SubTask sub, StateSetter setOverlayState) {
+    final color = _getUrgencyColor(sub.urgency);
+    return GestureDetector(
+      onTap: () async {
+        const options = ['Today', 'Urgent', 'Not Urgent', 'Long Term'];
+        int idx = options.indexOf(sub.urgency);
+        if (idx == -1) idx = 0;
+        int next = (idx + 1) % options.length;
+        sub.urgency = options[next];
+        await DBHelper.updateSubTask(sub);
+        setOverlayState(() {});
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.25),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color, width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.star_outline, size: 11, color: color),
+            const SizedBox(width: 4),
+            Text(
+              sub.urgency,
+              style: TextStyle(
+                fontSize: 10,
+                height: 1.1,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
