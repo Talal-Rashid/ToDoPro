@@ -17,7 +17,7 @@ class DBHelper {
     String path = join(await getDatabasesPath(), 'utility_todo.db');
     return openDatabase(
       path,
-      version: 8,
+      version: 9, // BUMPED: Advanced relational sub-task metadata tracking
       onCreate: (db, version) async {
         await db.execute(
           "CREATE TABLE tasks(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, category TEXT, subcategory TEXT, urgency TEXT, deadline TEXT, isRepeating INTEGER, repeatType TEXT, isCompleted INTEGER, syncToCalendar INTEGER, setNotification INTEGER, setAlarm INTEGER)",
@@ -34,8 +34,9 @@ class DBHelper {
         await db.execute(
           "CREATE TABLE subcategories(id INTEGER PRIMARY KEY AUTOINCREMENT, category_name TEXT, name TEXT, UNIQUE(category_name, name))",
         );
+        // UPDATED: Primary initialization string containing metadata properties
         await db.execute(
-          "CREATE TABLE subtasks(id INTEGER PRIMARY KEY AUTOINCREMENT, parent_id INTEGER, title TEXT, isCompleted INTEGER, FOREIGN KEY(parent_id) REFERENCES tasks(id) ON DELETE CASCADE)",
+          "CREATE TABLE subtasks(id INTEGER PRIMARY KEY AUTOINCREMENT, parent_id INTEGER, title TEXT, isCompleted INTEGER, urgency TEXT, syncToCalendar INTEGER, setNotification INTEGER, setAlarm INTEGER, repeatType TEXT, FOREIGN KEY(parent_id) REFERENCES tasks(id) ON DELETE CASCADE)",
         );
 
         final defaultCats = ['Work', 'Study', 'Research', 'Entertainment'];
@@ -85,6 +86,26 @@ class DBHelper {
             );
           } catch (_) {}
         }
+        // NEW: Version 9 structural deployment migration schema rules
+        if (oldVersion < 9) {
+          try {
+            await db.execute(
+              "ALTER TABLE subtasks ADD COLUMN urgency TEXT DEFAULT 'Today'",
+            );
+            await db.execute(
+              "ALTER TABLE subtasks ADD COLUMN syncToCalendar INTEGER DEFAULT 0",
+            );
+            await db.execute(
+              "ALTER TABLE subtasks ADD COLUMN setNotification INTEGER DEFAULT 0",
+            );
+            await db.execute(
+              "ALTER TABLE subtasks ADD COLUMN setAlarm INTEGER DEFAULT 0",
+            );
+            await db.execute(
+              "ALTER TABLE subtasks ADD COLUMN repeatType TEXT DEFAULT 'None'",
+            );
+          } catch (_) {}
+        }
       },
     );
   }
@@ -115,6 +136,7 @@ class DBHelper {
       whereArgs: [subTask.id],
     );
 
+    // Parent Auto-Complete Validation Check Block
     if (subTask.isCompleted == 1) {
       final List<Map<String, dynamic>> remaining = await db.query(
         'subtasks',

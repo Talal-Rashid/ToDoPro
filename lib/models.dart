@@ -48,18 +48,28 @@ class Task {
   }
 }
 
-// NEW: Normalized Relational SubTask Class Object
+// Normalized Relational SubTask Class Object with Explicit Independent Metadata Matrix
 class SubTask {
   int? id;
-  int parentId; // Strict Foreign Key mapping pointer
+  int parentId;
   String title;
   int isCompleted;
+  String urgency;
+  int syncToCalendar;
+  int setNotification;
+  int setAlarm;
+  String repeatType;
 
   SubTask({
     this.id,
     required this.parentId,
     required this.title,
     this.isCompleted = 0,
+    this.urgency = 'Today',
+    this.syncToCalendar = 0,
+    this.setNotification = 0,
+    this.setAlarm = 0,
+    this.repeatType = 'None',
   });
 
   Map<String, dynamic> toMap() {
@@ -68,6 +78,11 @@ class SubTask {
       'parent_id': parentId,
       'title': title,
       'isCompleted': isCompleted,
+      'urgency': urgency,
+      'syncToCalendar': syncToCalendar,
+      'setNotification': setNotification,
+      'setAlarm': setAlarm,
+      'repeatType': repeatType,
     };
   }
 
@@ -77,6 +92,11 @@ class SubTask {
       parentId: map['parent_id'],
       title: map['title'],
       isCompleted: map['isCompleted'] ?? 0,
+      urgency: map['urgency'] ?? 'Today',
+      syncToCalendar: map['syncToCalendar'] ?? 0,
+      setNotification: map['setNotification'] ?? 0,
+      setAlarm: map['setAlarm'] ?? 0,
+      repeatType: map['repeatType'] ?? 'None',
     );
   }
 }
