@@ -2094,8 +2094,13 @@ class _TaskScreenState extends State<TaskScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 4.0),
                       child: Row(
                         children: [
+                          const Icon(
+                            Icons.loop,
+                            color: Colors.purpleAccent,
+                          ),
+                          const SizedBox(width: 12),
                           const Text(
-                            'Repeating Task',
+                            'Repeat',
                             style: TextStyle(fontSize: 15),
                           ),
                           const SizedBox(width: 8),
