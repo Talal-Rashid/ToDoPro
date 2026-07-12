@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import '../db_helper.dart';
 
 class ManageTaxonomies extends StatefulWidget {
@@ -14,6 +15,7 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
   List<String> unifiedUrgencies = [];
   List<String> activeSubcategories = [];
   String? selectedCategoryForSubs;
+  bool _isDragging = false;
 
   final TextEditingController _catCtl = TextEditingController();
   final TextEditingController _urgCtl = TextEditingController();
@@ -27,6 +29,23 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
     '⏰ Within 1 Week',
     '⏰ Within 1 Month',
   ];
+
+  List<String> _enforceAnchorOrder(List<String> list) {
+    List<int> anchorIndices = [];
+    List<String> presentAnchors = [];
+    for (int i = 0; i < list.length; i++) {
+      if (_chronoAnchors.contains(list[i])) {
+        anchorIndices.add(i);
+        presentAnchors.add(list[i]);
+      }
+    }
+    presentAnchors.sort((a, b) => _chronoAnchors.indexOf(a).compareTo(_chronoAnchors.indexOf(b)));
+    List<String> result = List.from(list);
+    for (int i = 0; i < anchorIndices.length; i++) {
+      result[anchorIndices[i]] = presentAnchors[i];
+    }
+    return result;
+  }
 
   @override
   void initState() {
@@ -51,6 +70,8 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
       }
     }
 
+    rawList = _enforceAnchorOrder(rawList);
+
     if (selectedCategoryForSubs == null && categories.isNotEmpty) {
       selectedCategoryForSubs = categories.first;
     }
@@ -66,15 +87,8 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
   }
 
   Future<void> _updateUrgencyOrder() async {
-    // Process entire unified hierarchy chain and map position indices to database weights
-    for (int i = 0; i < unifiedUrgencies.length; i++) {
-      String name = unifiedUrgencies[i];
-      if (_chronoAnchors.contains(name)) {
-        // If it's a dynamic time anchor, upsert its record or force check its tracking
-        await DBHelper.insertUrgency(name, i);
-      }
-      await DBHelper.updateUrgencyWeight(name, i);
-    }
+    final ordered = _enforceAnchorOrder(unifiedUrgencies);
+    await DBHelper.updateUrgencyWeights(ordered, _chronoAnchors);
     _load();
   }
 
@@ -83,6 +97,9 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings & Configuration')),
       body: ListView(
+        physics: _isDragging
+            ? const NeverScrollableScrollPhysics()
+            : const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         children: [
           // PANEL 1: CATEGORIES POOL CONFIGURATION
@@ -308,6 +325,17 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
                       SizedBox(
                         height: unifiedUrgencies.length * 52.0,
                         child: ReorderableListView.builder(
+                          dragStartBehavior: DragStartBehavior.down,
+                          onReorderStart: (index) {
+                            setState(() {
+                              _isDragging = true;
+                            });
+                          },
+                          onReorderEnd: (index) {
+                            setState(() {
+                              _isDragging = false;
+                            });
+                          },
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: unifiedUrgencies.length,
                           // NEW: Built-in instant-grab configuration
@@ -365,36 +393,65 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
                                       },
                                     ),
                                   // FIXED: Wrap the listener in a premium raw pointer behavior interceptor
-                                  Listener(
-                                    behavior: HitTestBehavior.opaque,
-                                    onPointerDown: (_) {
-                                      // Explicitly focus primary node instantly upon touch boundary registration
-                                      FocusScope.of(context).unfocus();
-                                    },
-                                    child: ReorderableDragStartListener(
-                                      index: index,
-                                      child: const Padding(
-                                        padding: EdgeInsets.fromLTRB(
-                                          12,
-                                          14,
-                                          4,
-                                          14,
-                                        ), // Expanded touch canvas
-                                        child: Icon(
-                                          Icons.drag_handle,
-                                          color: Colors
-                                              .blueAccent, // Color indicator update for premium feedback
-                                          size: 22,
+                                  isAnchor
+                                      ? const Padding(
+                                          padding: EdgeInsets.fromLTRB(
+                                            12,
+                                            14,
+                                            4,
+                                            14,
+                                          ),
+                                          child: Icon(
+                                            Icons.lock_outline,
+                                            color: Colors.blueGrey,
+                                            size: 22,
+                                          ),
+                                        )
+                                      : Listener(
+                                          behavior: HitTestBehavior.opaque,
+                                          onPointerDown: (_) {
+                                            FocusScope.of(context).unfocus();
+                                            setState(() {
+                                              _isDragging = true;
+                                            });
+                                          },
+                                          onPointerUp: (_) {
+                                            setState(() {
+                                              _isDragging = false;
+                                            });
+                                          },
+                                          onPointerCancel: (_) {
+                                            setState(() {
+                                              _isDragging = false;
+                                            });
+                                          },
+                                          child: ReorderableDragStartListener(
+                                            index: index,
+                                            child: const Padding(
+                                              padding: EdgeInsets.fromLTRB(
+                                                12,
+                                                14,
+                                                4,
+                                                14,
+                                              ), // Expanded touch canvas
+                                              child: Icon(
+                                                Icons.drag_handle,
+                                                color: Colors
+                                                    .blueAccent, // Color indicator update for premium feedback
+                                                size: 22,
+                                              ),
+                                            ),
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                  ),
                                 ],
                               ),
                             );
                           },
                           onReorderItem: (oldIndex, newIndex) {
                             setState(() {
+                              if (newIndex > oldIndex) {
+                                newIndex -= 1;
+                              }
                               final item = unifiedUrgencies.removeAt(oldIndex);
                               unifiedUrgencies.insert(newIndex, item);
                             });

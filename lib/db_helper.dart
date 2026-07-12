@@ -13,6 +13,27 @@ class DBHelper {
     );
   }
 
+  static Future<void> updateUrgencyWeights(List<String> orderedNames, List<String> chronoAnchors) async {
+    final db = await initDB();
+    await db.transaction((txn) async {
+      for (int i = 0; i < orderedNames.length; i++) {
+        String name = orderedNames[i];
+        if (chronoAnchors.contains(name)) {
+          await txn.insert('urgencies', {
+            'name': name,
+            'weight': i,
+          }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        }
+        await txn.update(
+          'urgencies',
+          {'weight': i},
+          where: 'name = ?',
+          whereArgs: [name],
+        );
+      }
+    });
+  }
+
   static Future<Database> initDB() async {
     String path = join(await getDatabasesPath(), 'utility_todo.db');
     return openDatabase(
@@ -260,8 +281,31 @@ class DBHelper {
     await db.delete('urgencies', where: 'name = ?', whereArgs: [name]);
   }
 
+  static String calculateUrgencyFromDeadline(String deadlineStr, String currentUrgency) {
+    final targetDate = DateTime.parse(deadlineStr);
+    final difference = targetDate.difference(DateTime.now());
+    if (difference.isNegative || difference.inHours <= 6) {
+      return '⏰ Within 6 Hours';
+    } else if (difference.inHours <= 12) {
+      return '⏰ Within 12 Hours';
+    } else if (difference.inHours <= 24) {
+      return '⏰ Within 24 Hours';
+    } else if (difference.inDays <= 7) {
+      return '⏰ Within 1 Week';
+    } else if (difference.inDays <= 30) {
+      return '⏰ Within 1 Month';
+    }
+    if (currentUrgency.startsWith('⏰')) {
+      return 'Today';
+    }
+    return currentUrgency;
+  }
+
   static Future<int> insertTask(Task task) async {
     final db = await initDB();
+    if (task.deadline != null) {
+      task.urgency = calculateUrgencyFromDeadline(task.deadline!, task.urgency);
+    }
     return await db.insert('tasks', task.toMap());
   }
 
@@ -271,28 +315,67 @@ class DBHelper {
       'tasks',
       orderBy: "isCompleted ASC",
     );
-    return List.generate(
-      maps.length,
-      (i) => Task(
-        id: maps[i]['id'],
-        title: maps[i]['title'],
-        description: maps[i]['description'] ?? '',
-        category: maps[i]['category'],
-        subcategory: maps[i]['subcategory'] ?? '',
-        urgency: maps[i]['urgency'],
-        deadline: maps[i]['deadline'],
-        isRepeating: maps[i]['isRepeating'],
-        repeatType: maps[i]['repeatType'],
-        isCompleted: maps[i]['isCompleted'],
-        syncToCalendar: maps[i]['syncToCalendar'] ?? 0,
-        setNotification: maps[i]['setNotification'] ?? 0,
-        setAlarm: maps[i]['setAlarm'] ?? 0,
-      ),
-    );
+    List<Task> list = [];
+    final now = DateTime.now();
+    for (var m in maps) {
+      String urgency = m['urgency'] ?? '';
+      final deadline = m['deadline'];
+
+      if (deadline != null) {
+        final targetDate = DateTime.parse(deadline);
+        final difference = targetDate.difference(now);
+        String calculatedUrgency = urgency;
+        if (difference.isNegative || difference.inHours <= 6) {
+          calculatedUrgency = '⏰ Within 6 Hours';
+        } else if (difference.inHours <= 12) {
+          calculatedUrgency = '⏰ Within 12 Hours';
+        } else if (difference.inHours <= 24) {
+          calculatedUrgency = '⏰ Within 24 Hours';
+        } else if (difference.inDays <= 7) {
+          calculatedUrgency = '⏰ Within 1 Week';
+        } else if (difference.inDays <= 30) {
+          calculatedUrgency = '⏰ Within 1 Month';
+        } else {
+          if (urgency.startsWith('⏰')) {
+            calculatedUrgency = 'Today';
+          }
+        }
+
+        if (calculatedUrgency != urgency) {
+          urgency = calculatedUrgency;
+          await db.update(
+            'tasks',
+            {'urgency': urgency},
+            where: 'id = ?',
+            whereArgs: [m['id']],
+          );
+        }
+      }
+
+      list.add(Task(
+        id: m['id'],
+        title: m['title'],
+        description: m['description'] ?? '',
+        category: m['category'],
+        subcategory: m['subcategory'] ?? '',
+        urgency: urgency,
+        deadline: deadline,
+        isRepeating: m['isRepeating'],
+        repeatType: m['repeatType'],
+        isCompleted: m['isCompleted'],
+        syncToCalendar: m['syncToCalendar'] ?? 0,
+        setNotification: m['setNotification'] ?? 0,
+        setAlarm: m['setAlarm'] ?? 0,
+      ));
+    }
+    return list;
   }
 
   static Future<void> updateTask(Task task) async {
     final db = await initDB();
+    if (task.deadline != null) {
+      task.urgency = calculateUrgencyFromDeadline(task.deadline!, task.urgency);
+    }
     await db.update(
       'tasks',
       task.toMap(),

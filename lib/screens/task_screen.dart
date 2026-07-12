@@ -2201,6 +2201,9 @@ class _TaskScreenState extends State<TaskScreen> {
     String selectedSubCat = existingTask?.subcategory ?? 'None';
     if (selectedSubCat.isEmpty) selectedSubCat = 'None';
     String selectedUrg = existingTask?.urgency ?? 'Today';
+    if (selectedUrg.startsWith('⏰')) {
+      selectedUrg = 'Today';
+    }
     String selectedRepeat = existingTask?.repeatType ?? 'None';
 
     DateTime? deadlineDate;
@@ -2246,6 +2249,43 @@ class _TaskScreenState extends State<TaskScreen> {
             final cleanUserUrgencies = urgencies
                 .where((u) => !u.startsWith('⏰'))
                 .toList();
+
+            String? dynamicUrgency;
+            if (deadlineDate != null) {
+              DateTime targetDate;
+              if (deadlineTime != null) {
+                targetDate = DateTime(
+                  deadlineDate!.year,
+                  deadlineDate!.month,
+                  deadlineDate!.day,
+                  deadlineTime!.hour,
+                  deadlineTime!.minute,
+                );
+              } else {
+                targetDate = DateTime(
+                  deadlineDate!.year,
+                  deadlineDate!.month,
+                  deadlineDate!.day,
+                  23,
+                  59,
+                  59,
+                );
+              }
+              final difference = targetDate.difference(DateTime.now());
+              if (difference.isNegative || difference.inHours <= 6) {
+                dynamicUrgency = '⏰ Within 6 Hours';
+              } else if (difference.inHours <= 12) {
+                dynamicUrgency = '⏰ Within 12 Hours';
+              } else if (difference.inHours <= 24) {
+                dynamicUrgency = '⏰ Within 24 Hours';
+              } else if (difference.inDays <= 7) {
+                dynamicUrgency = '⏰ Within 1 Week';
+              } else if (difference.inDays <= 30) {
+                dynamicUrgency = '⏰ Within 1 Month';
+              } else {
+                dynamicUrgency = '⏰ Within 1 Month';
+              }
+            }
 
             List<String> buildDynamicSubCats() {
               List<String> items = [
@@ -2423,41 +2463,57 @@ class _TaskScreenState extends State<TaskScreen> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: DropdownButtonFormField<String>(
-                                  initialValue:
-                                      cleanUserUrgencies.contains(selectedUrg)
-                                      ? selectedUrg
-                                      : cleanUserUrgencies.first,
+                                  initialValue: dynamicUrgency ??
+                                      (cleanUserUrgencies.contains(selectedUrg)
+                                          ? selectedUrg
+                                          : cleanUserUrgencies.first),
                                   isExpanded: true,
                                   decoration: _buildFormInputDecoration(
                                     "Urgency",
                                   ),
-                                  items: cleanUserUrgencies
-                                      .map(
-                                        (e) => DropdownMenuItem(
-                                          value: e,
-                                          child: Text(
-                                            e,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: e.startsWith('+')
-                                                  ? Colors.green
-                                                  : Colors.white,
+                                  items: dynamicUrgency != null
+                                      ? [
+                                          DropdownMenuItem(
+                                            value: dynamicUrgency,
+                                            child: Text(
+                                              dynamicUrgency,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.white60,
+                                              ),
                                             ),
-                                          ),
-                                        ),
-                                      )
-                                      .toList(),
-                                  onChanged: (v) {
-                                    if (v == "+ Add New Urgency") {
-                                      handleCustomTaxonomy(
-                                        'Urgency',
-                                        selectedUrg,
-                                      );
-                                    } else {
-                                      setModalState(() => selectedUrg = v!);
-                                    }
-                                  },
+                                          )
+                                        ]
+                                      : cleanUserUrgencies
+                                          .map(
+                                            (e) => DropdownMenuItem(
+                                              value: e,
+                                              child: Text(
+                                                e,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: e.startsWith('+')
+                                                      ? Colors.green
+                                                      : Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                          .toList(),
+                                  onChanged: dynamicUrgency != null
+                                      ? null
+                                      : (v) {
+                                          if (v == "+ Add New Urgency") {
+                                            handleCustomTaxonomy(
+                                              'Urgency',
+                                              selectedUrg,
+                                            );
+                                          } else {
+                                            setModalState(() => selectedUrg = v!);
+                                          }
+                                        },
                                 ),
                               ),
                             ],
@@ -2890,7 +2946,7 @@ class _TaskScreenState extends State<TaskScreen> {
                                     t.subcategory = selectedSubCat == 'None'
                                         ? ''
                                         : selectedSubCat;
-                                    t.urgency = selectedUrg;
+                                    t.urgency = dynamicUrgency ?? selectedUrg;
 
                                     if (deadlineDate != null) {
                                       if (deadlineTime != null) {
