@@ -1755,10 +1755,8 @@ class _TaskScreenState extends State<TaskScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF0C0C0C),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
@@ -1853,14 +1851,20 @@ class _TaskScreenState extends State<TaskScreen> {
 
             final visibleSubCats = buildDynamicSubCats();
 
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 16,
-                right: 16,
-                top: 16,
-              ),
-              child: SingleChildScrollView(
+            return ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 14, sigmaY: 12),
+                child: Material(
+                  color: const Color(0xFF0C0C0C).withValues(alpha: 0.9),
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      bottom: MediaQuery.of(context).viewInsets.bottom,
+                      left: 16,
+                      right: 16,
+                      top: 16,
+                    ),
+                    child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2090,68 +2094,6 @@ class _TaskScreenState extends State<TaskScreen> {
                       ),
                     const Divider(),
 
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4.0),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.loop,
-                            color: Colors.purpleAccent,
-                          ),
-                          const SizedBox(width: 12),
-                          const Text(
-                            'Repeat',
-                            style: TextStyle(fontSize: 15),
-                          ),
-                          const SizedBox(width: 8),
-                          Switch(
-                            value: isRepeating,
-                            onChanged: (v) =>
-                                setModalState(() => isRepeating = v),
-                          ),
-                          const Spacer(),
-                          if (isRepeating)
-                            SizedBox(
-                              width: 140,
-                              child: DropdownButtonFormField<String>(
-                                initialValue: selectedRepeat,
-                                decoration: const InputDecoration(
-                                  labelText: "Interval",
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  border: OutlineInputBorder(),
-                                ),
-                                items:
-                                    [
-                                          'None',
-                                          'Daily',
-                                          'Weekly',
-                                          'Biweekly',
-                                          'Monthly',
-                                        ]
-                                        .map(
-                                          (e) => DropdownMenuItem(
-                                            value: e,
-                                            child: Text(
-                                              e,
-                                              style: const TextStyle(
-                                                fontSize: 13,
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                        .toList(),
-                                onChanged: (v) =>
-                                    setModalState(() => selectedRepeat = v!),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const Divider(),
-
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 4),
                       child: Text(
@@ -2165,45 +2107,52 @@ class _TaskScreenState extends State<TaskScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
                       children: [
-                        ChoiceChip(
-                          avatar: Icon(
-                            Icons.calendar_today,
-                            size: 16,
-                            color: syncCal ? Colors.white : Colors.blueAccent,
-                          ),
-                          label: const Text("Calendar"),
-                          selected: syncCal,
-                          selectedColor: Colors.blueAccent.withValues(
-                            alpha: 0.3,
-                          ),
-                          onSelected: (v) => setModalState(() => syncCal = v),
+                        _buildStatusMatrixPill(
+                          icon: Icons.calendar_month,
+                          label: "Calendar",
+                          isActive: syncCal,
+                          activeColor: Colors.blueAccent,
+                          onTap: () => setModalState(() => syncCal = !syncCal),
                         ),
-                        ChoiceChip(
-                          avatar: Icon(
-                            Icons.notifications_active,
-                            size: 16,
-                            color: setNotify ? Colors.white : Colors.amber,
-                          ),
-                          label: const Text("Notification"),
-                          selected: setNotify,
-                          selectedColor: Colors.amber.withValues(alpha: 0.3),
-                          onSelected: (v) => setModalState(() => setNotify = v),
+                        _buildStatusMatrixPill(
+                          icon: Icons.notifications_active,
+                          label: "Notify",
+                          isActive: setNotify,
+                          activeColor: Colors.amber,
+                          onTap: () => setModalState(() => setNotify = !setNotify),
                         ),
-                        ChoiceChip(
-                          avatar: Icon(
-                            Icons.alarm,
-                            size: 16,
-                            color: setAlarm ? Colors.white : Colors.redAccent,
-                          ),
-                          label: const Text("Alarm"),
-                          selected: setAlarm,
-                          selectedColor: Colors.redAccent.withValues(
-                            alpha: 0.3,
-                          ),
-                          onSelected: (v) => setModalState(() => setAlarm = v),
+                        _buildStatusMatrixPill(
+                          icon: Icons.alarm,
+                          label: "Alarm",
+                          isActive: setAlarm,
+                          activeColor: Colors.redAccent,
+                          onTap: () => setModalState(() => setAlarm = !setAlarm),
+                        ),
+                        _buildStatusMatrixPill(
+                          icon: Icons.loop,
+                          label: isRepeating ? selectedRepeat : "None",
+                          isActive: isRepeating,
+                          activeColor: Colors.purpleAccent,
+                          onTap: () {
+                            const repeatOptions = [
+                              'None',
+                              'Daily',
+                              'Weekly',
+                              'Biweekly',
+                              'Monthly'
+                            ];
+                            int currentIdx = repeatOptions.indexOf(selectedRepeat);
+                            if (currentIdx == -1) currentIdx = 0;
+                            int nextIdx = (currentIdx + 1) % repeatOptions.length;
+                            setModalState(() {
+                              selectedRepeat = repeatOptions[nextIdx];
+                              isRepeating = selectedRepeat != 'None';
+                            });
+                          },
                         ),
                       ],
                     ),
@@ -2292,7 +2241,10 @@ class _TaskScreenState extends State<TaskScreen> {
                   ],
                 ),
               ),
-            );
+            ),
+          ),
+        ),
+      );
           },
         );
       },
