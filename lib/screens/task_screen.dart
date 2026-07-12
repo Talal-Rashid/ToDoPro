@@ -184,6 +184,7 @@ class _TaskScreenState extends State<TaskScreen> {
     return grouped;
   }
 
+  // UPDATED MATRIX FILTRATION VIEW SHEET BLOCK: Houses nested dropdown selections internally[cite: 10]
   void _showFilterModalSheet(BuildContext context) async {
     List<String> availCats = await DBHelper.getCategories();
     List<String> availUrgencies = await DBHelper.getUrgencies();
@@ -241,6 +242,7 @@ class _TaskScreenState extends State<TaskScreen> {
                     ),
                     const Divider(),
 
+                    // REWRITTEN SECTION: Integrated Category + Submenu Matrix Section
                     ExpansionTile(
                       leading: const Icon(
                         Icons.category,
@@ -249,176 +251,234 @@ class _TaskScreenState extends State<TaskScreen> {
                       ),
                       title: Text(
                         selectedFilterCategories.isEmpty
-                            ? "All Categories"
+                            ? "Categories"
                             : "Categories (${selectedFilterCategories.length} selected)",
                         style: const TextStyle(fontSize: 14),
                       ),
-                      subtitle: selectedFilterCategories.isNotEmpty
-                          ? Text(
-                              selectedFilterCategories.join(', '),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            )
-                          : null,
+                      subtitle: const Text(
+                        "(categories → sub categories)",
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
                       children: availCats.map((cat) {
-                        final isSel = selectedFilterCategories.contains(cat);
-                        return CheckboxListTile(
-                          controlAffinity: ListTileControlAffinity.leading,
-                          title: Text(
-                            cat,
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                          value: isSel,
-                          onChanged: (bool? checked) {
-                            setModalState(() {
-                              if (checked == true) {
-                                selectedFilterCategories.add(cat);
-                              } else {
-                                selectedFilterCategories.remove(cat);
-                                selectedFilterSubcategories.clear();
-                              }
-                            });
-                            setState(() {});
+                        final isCatSelected = selectedFilterCategories.contains(
+                          cat,
+                        );
+
+                        return FutureBuilder<List<String>>(
+                          future: DBHelper.getSubcategories(cat),
+                          builder: (context, snapshot) {
+                            final subs = snapshot.data ?? [];
+                            final catColor = _getDeterministicColor(cat);
+
+                            return Column(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 4,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            SizedBox(
+                                              width: 24,
+                                              height: 24,
+                                              child: Checkbox(
+                                                value: isCatSelected,
+                                                activeColor: catColor,
+                                                onChanged: (bool? checked) {
+                                                  setModalState(() {
+                                                    if (checked == true) {
+                                                      selectedFilterCategories.add(cat);
+                                                    } else {
+                                                      selectedFilterCategories.remove(cat);
+                                                      for (var s in subs) {
+                                                        selectedFilterSubcategories.remove(s);
+                                                      }
+                                                      selectedFilterSubcategories.remove('None');
+                                                    }
+                                                  });
+                                                  setState(() {});
+                                                },
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Text(
+                                                cat,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Align(
+                                          alignment: Alignment.centerRight,
+                                          child: !isCatSelected || subs.isEmpty
+                                              ? const SizedBox.shrink()
+                                              : PopupMenuButton<String>(
+                                                  tooltip: "Select Subcategories",
+                                                  offset: const Offset(0, 40),
+                                                  color: const Color(0xFF0C0C0C),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(8),
+                                                    side: const BorderSide(color: Colors.white12),
+                                                  ),
+                                                  child: Container(
+                                                    width: double.infinity,
+                                                    padding: const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 8,
+                                                    ),
+                                                    decoration: BoxDecoration(
+                                                      border: Border.all(
+                                                        color: catColor
+                                                            .withValues(alpha: 0.5),
+                                                      ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(4),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                      children: [
+                                                        Expanded(
+                                                          child: Text(
+                                                            selectedFilterSubcategories
+                                                                        .contains('None') ||
+                                                                    selectedFilterSubcategories
+                                                                        .any(
+                                                                      (s) => subs.contains(s),
+                                                                    )
+                                                                ? "Selective"
+                                                                : "All",
+                                                            overflow: TextOverflow.ellipsis,
+                                                            style: TextStyle(
+                                                              fontSize: 11,
+                                                              color: catColor,
+                                                              fontWeight: FontWeight.bold,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        Icon(
+                                                          Icons.arrow_drop_down,
+                                                          size: 14,
+                                                          color: catColor,
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  itemBuilder: (BuildContext context) {
+                                                    return [
+                                                      PopupMenuItem<String>(
+                                                        value: "ALL_TRACK",
+                                                        child: const Text(
+                                                          "All (Default)",
+                                                          style: TextStyle(
+                                                            fontSize: 12,
+                                                            color: Colors.green,
+                                                            fontWeight: FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      CustomPopupMenuEntry<String>(
+                                                        entryHeight: 48,
+                                                        child: StatefulBuilder(
+                                                          builder: (context, setMenuState) {
+                                                            final isSelected = selectedFilterSubcategories.contains('None');
+                                                            return CheckboxListTile(
+                                                              controlAffinity: ListTileControlAffinity.leading,
+                                                              title: const Text(
+                                                                "None",
+                                                                style: TextStyle(
+                                                                  fontSize: 12,
+                                                                  color: Colors.white,
+                                                                  fontStyle: FontStyle.italic,
+                                                                ),
+                                                              ),
+                                                              value: isSelected,
+                                                              onChanged: (bool? checked) {
+                                                                setModalState(() {
+                                                                  if (checked == true) {
+                                                                    selectedFilterSubcategories.add('None');
+                                                                  } else {
+                                                                    selectedFilterSubcategories.remove('None');
+                                                                  }
+                                                                });
+                                                                setMenuState(() {});
+                                                              },
+                                                            );
+                                                          },
+                                                        ),
+                                                      ),
+                                                      ...subs.map((sub) {
+                                                        return CustomPopupMenuEntry<String>(
+                                                          entryHeight: 48,
+                                                          child: StatefulBuilder(
+                                                            builder: (context, setMenuState) {
+                                                              final isSelected = selectedFilterSubcategories.contains(sub);
+                                                              return CheckboxListTile(
+                                                                controlAffinity: ListTileControlAffinity.leading,
+                                                                title: Text(
+                                                                  sub,
+                                                                  style: const TextStyle(
+                                                                    fontSize: 12,
+                                                                    color: Colors.white,
+                                                                  ),
+                                                                ),
+                                                                value: isSelected,
+                                                                onChanged: (bool? checked) {
+                                                                  setModalState(() {
+                                                                    if (checked == true) {
+                                                                      selectedFilterSubcategories.add(sub);
+                                                                    } else {
+                                                                      selectedFilterSubcategories.remove(sub);
+                                                                    }
+                                                                  });
+                                                                  setMenuState(() {});
+                                                                },
+                                                              );
+                                                            },
+                                                          ),
+                                                        );
+                                                      }),
+                                                    ];
+                                                  },
+                                                  onSelected: (val) {
+                                                    if (val == "ALL_TRACK") {
+                                                      setModalState(() {
+                                                        for (var s in subs) {
+                                                          selectedFilterSubcategories.remove(s);
+                                                        }
+                                                        selectedFilterSubcategories.remove('None');
+                                                      });
+                                                      setState(() {});
+                                                    }
+                                                  },
+                                                ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            );
                           },
                         );
                       }).toList(),
                     ),
-
-                    if (selectedFilterCategories.isNotEmpty)
-                      FutureBuilder<Map<String, List<String>>>(
-                        future: () async {
-                          Map<String, List<String>> structure = {};
-                          for (var cat in selectedFilterCategories) {
-                            var subs = await DBHelper.getSubcategories(cat);
-                            if (subs.isNotEmpty) structure[cat] = subs;
-                          }
-                          return structure;
-                        }(),
-                        builder: (context, snapshot) {
-                          if (!snapshot.hasData) return const SizedBox.shrink();
-                          final structure = snapshot.data!;
-
-                          return ExpansionTile(
-                            leading: const Icon(
-                              Icons.layers,
-                              color: Colors.orangeAccent,
-                              size: 20,
-                            ),
-                            title: Text(
-                              selectedFilterSubcategories.isEmpty
-                                  ? "All Subcategories under selections"
-                                  : "Subcategories (${selectedFilterSubcategories.length} selected)",
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                            subtitle: selectedFilterSubcategories.isNotEmpty
-                                ? Text(
-                                    selectedFilterSubcategories.join(', '),
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  )
-                                : null,
-                            children: [
-                              CheckboxListTile(
-                                controlAffinity:
-                                    ListTileControlAffinity.leading,
-                                title: const Text(
-                                  "None (No Subcategory)",
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                                value: selectedFilterSubcategories.contains(
-                                  'None',
-                                ),
-                                onChanged: (bool? checked) {
-                                  setModalState(() {
-                                    checked == true
-                                        ? selectedFilterSubcategories.add(
-                                            'None',
-                                          )
-                                        : selectedFilterSubcategories.remove(
-                                            'None',
-                                          );
-                                  });
-                                  setState(() {});
-                                },
-                              ),
-                              const Divider(
-                                height: 1,
-                                indent: 16,
-                                endIndent: 16,
-                              ),
-
-                              ...structure.entries.map((entry) {
-                                final parentCategoryName = entry.key;
-                                final subcategoriesList = entry.value;
-
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.fromLTRB(
-                                        24,
-                                        12,
-                                        16,
-                                        4,
-                                      ),
-                                      child: Text(
-                                        parentCategoryName.toUpperCase(),
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: _getDeterministicColor(
-                                            parentCategoryName,
-                                          ),
-                                          letterSpacing: 1.0,
-                                        ),
-                                      ),
-                                    ),
-                                    ...subcategoriesList.map((sub) {
-                                      final isSel = selectedFilterSubcategories
-                                          .contains(sub);
-                                      return Padding(
-                                        padding: const EdgeInsets.only(
-                                          left: 12,
-                                        ),
-                                        child: CheckboxListTile(
-                                          controlAffinity:
-                                              ListTileControlAffinity.leading,
-                                          title: Text(
-                                            sub,
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                            ),
-                                          ),
-                                          value: isSel,
-                                          onChanged: (bool? checked) {
-                                            setModalState(() {
-                                              checked == true
-                                                  ? selectedFilterSubcategories
-                                                        .add(sub)
-                                                  : selectedFilterSubcategories
-                                                        .remove(sub);
-                                            });
-                                            setState(() {});
-                                          },
-                                        ),
-                                      );
-                                    }),
-                                  ],
-                                );
-                              }),
-                            ],
-                          );
-                        },
-                      ),
 
                     ExpansionTile(
                       leading: const Icon(
@@ -428,7 +488,7 @@ class _TaskScreenState extends State<TaskScreen> {
                       ),
                       title: Text(
                         selectedFilterUrgencies.isEmpty
-                            ? "All Urgency Tiers"
+                            ? "Urgency"
                             : "Urgencies (${selectedFilterUrgencies.length} selected)",
                         style: const TextStyle(fontSize: 14),
                       ),
@@ -492,7 +552,6 @@ class _TaskScreenState extends State<TaskScreen> {
     );
   }
 
-  // CAPSULE MATRIX PILL: Restored back to the text-adaptive dynamic width capsule design language[cite: 12]
   Widget _buildStatusMatrixPill({
     required IconData icon,
     required String label,
@@ -503,19 +562,14 @@ class _TaskScreenState extends State<TaskScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          vertical: 8,
-        ), // Snug width boundaries tracking[cite: 12]
+        padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           color: isActive ? activeColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(
-            20,
-          ), // Enforce perfect rounded capsules globally[cite: 12]
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: activeColor, width: 1),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment
-              .center, // Center contents within Expanded capsule
+          mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Icon(icon, size: 14, color: isActive ? Colors.black : activeColor),
@@ -526,13 +580,10 @@ class _TaskScreenState extends State<TaskScreen> {
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
                 style: TextStyle(
-                  fontSize: 14, // Synchronized exact form font scales[cite: 12]
+                  fontSize: 14,
                   height: 1.1,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                  color: isActive
-                      ? Colors.black
-                      : Colors
-                            .white, // Standardized white states inside active maps
+                  color: isActive ? Colors.black : Colors.white,
                 ),
               ),
             ),
@@ -542,7 +593,6 @@ class _TaskScreenState extends State<TaskScreen> {
     );
   }
 
-  // INPUT BOX DECORATION FACTORY GENERATOR: Persistent sharp outlines that glow selectively[cite: 12]
   InputDecoration _buildFormInputDecoration(
     String label, {
     IconData? suffixIcon,
@@ -553,10 +603,7 @@ class _TaskScreenState extends State<TaskScreen> {
       suffixIcon: suffixIcon != null
           ? Icon(suffixIcon, color: Colors.grey)
           : null,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 16,
-      ), // Unified inner text metrics[cite: 12]
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       enabledBorder: const OutlineInputBorder(
         borderSide: BorderSide(color: Colors.white24, width: 1),
         borderRadius: BorderRadius.all(Radius.circular(4)),
@@ -571,7 +618,6 @@ class _TaskScreenState extends State<TaskScreen> {
     );
   }
 
-  // THE 5-LINE IMMERSIVE FOCUSED OVERLAY ENGINE[cite: 12]
   void _showFocusedTaskOverlay(BuildContext context, Task task) {
     final TextEditingController descCtl = TextEditingController(
       text: task.description,
@@ -617,7 +663,6 @@ class _TaskScreenState extends State<TaskScreen> {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // LINE 1: High-Contrast Heading Layout Track[cite: 12]
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -653,10 +698,8 @@ class _TaskScreenState extends State<TaskScreen> {
                                         CrossAxisAlignment.start,
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      // LINE 2: Text Width-Adaptive Inline Space-Between Row for Taxonomy Capsules[cite: 12]
                                       Row(
                                         children: [
-                                          // Category Capsule
                                           Expanded(
                                             child: Container(
                                               padding:
@@ -667,9 +710,8 @@ class _TaskScreenState extends State<TaskScreen> {
                                                 color: _getDeterministicColor(
                                                   task.category,
                                                 ).withValues(alpha: 0.15),
-                                                borderRadius: BorderRadius.circular(
-                                                  20,
-                                                ), // Restored capsule shape[cite: 12]
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
                                                 border: Border.all(
                                                   color: _getDeterministicColor(
                                                     task.category,
@@ -698,8 +740,7 @@ class _TaskScreenState extends State<TaskScreen> {
                                                       maxLines: 1,
                                                       style: const TextStyle(
                                                         fontSize: 12,
-                                                        color: Colors
-                                                            .white, // Set font color cleanly to white
+                                                        color: Colors.white,
                                                         fontWeight:
                                                             FontWeight.bold,
                                                       ),
@@ -711,7 +752,6 @@ class _TaskScreenState extends State<TaskScreen> {
                                           ),
                                           const SizedBox(width: 8),
 
-                                          // Subcategory Capsule (Displays persistent 'None' placeholder when blank)
                                           Expanded(
                                             child: Container(
                                               padding:
@@ -726,10 +766,9 @@ class _TaskScreenState extends State<TaskScreen> {
                                                       ).withValues(alpha: 0.15)
                                                     : Colors.white.withValues(
                                                         alpha: 0.03,
-                                                      ), // Highly muted anchor tone
-                                                borderRadius: BorderRadius.circular(
-                                                  20,
-                                                ), // Restored capsule shape[cite: 12]
+                                                      ),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
                                                 border: Border.all(
                                                   color:
                                                       task
@@ -738,8 +777,7 @@ class _TaskScreenState extends State<TaskScreen> {
                                                       ? _getDeterministicColor(
                                                           task.subcategory,
                                                         )
-                                                      : Colors
-                                                            .white12, // Muted grey outline tracking limits
+                                                      : Colors.white12,
                                                   width: 1,
                                                 ),
                                               ),
@@ -777,8 +815,7 @@ class _TaskScreenState extends State<TaskScreen> {
                                                                 .subcategory
                                                                 .isNotEmpty
                                                             ? Colors.white
-                                                            : Colors
-                                                                  .grey, // Clear indicator text
+                                                            : Colors.grey,
                                                         fontWeight:
                                                             FontWeight.bold,
                                                       ),
@@ -790,7 +827,6 @@ class _TaskScreenState extends State<TaskScreen> {
                                           ),
                                           const SizedBox(width: 8),
 
-                                          // Urgency Capsule
                                           Expanded(
                                             child: Container(
                                               padding:
@@ -801,9 +837,8 @@ class _TaskScreenState extends State<TaskScreen> {
                                                 color: _getUrgencyColor(
                                                   task.urgency,
                                                 ).withValues(alpha: 0.15),
-                                                borderRadius: BorderRadius.circular(
-                                                  20,
-                                                ), // Restored capsule shape[cite: 12]
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
                                                 border: Border.all(
                                                   color: _getUrgencyColor(
                                                     task.urgency,
@@ -831,8 +866,7 @@ class _TaskScreenState extends State<TaskScreen> {
                                                       maxLines: 1,
                                                       style: const TextStyle(
                                                         fontSize: 12,
-                                                        color: Colors
-                                                            .white, // Set font color cleanly to white
+                                                        color: Colors.white,
                                                         fontWeight:
                                                             FontWeight.bold,
                                                       ),
@@ -846,7 +880,6 @@ class _TaskScreenState extends State<TaskScreen> {
                                       ),
                                       const SizedBox(height: 16),
 
-                                      // LINE 3: Full-Width Space-Between Inline Row for Status Matrices[cite: 12]
                                       Row(
                                         children: [
                                           Expanded(
@@ -903,7 +936,6 @@ class _TaskScreenState extends State<TaskScreen> {
                                       ),
                                       const SizedBox(height: 12),
 
-                                      // LINE 3b: Repeat Dropdown Capsule & Options Panel directly below
                                       Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
@@ -1083,7 +1115,6 @@ class _TaskScreenState extends State<TaskScreen> {
                                       ),
                                       const SizedBox(height: 16),
 
-                                      // LINE 4: Outlined Description Anchor Container Block[cite: 12]
                                       Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.spaceBetween,
@@ -1120,7 +1151,7 @@ class _TaskScreenState extends State<TaskScreen> {
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 12,
                                           vertical: 16,
-                                        ), // Minimal explicit padding matching creation sheet inputs[cite: 12]
+                                        ),
                                         decoration: BoxDecoration(
                                           color: Colors.transparent,
                                           borderRadius: BorderRadius.circular(
@@ -1129,14 +1160,13 @@ class _TaskScreenState extends State<TaskScreen> {
                                           border: Border.all(
                                             color: Colors.white24,
                                             width: 1,
-                                          ), // Standard form boundary line[cite: 12]
+                                          ),
                                         ),
                                         child: TextField(
                                           controller: descCtl,
                                           maxLines: isDescExpanded ? null : 1,
                                           style: const TextStyle(
-                                            fontSize:
-                                                14, // Exact text font sizing synchronization[cite: 12]
+                                            fontSize: 14,
                                             color: Color(0xD9FFFFFF),
                                           ),
                                           decoration: const InputDecoration(
@@ -1147,8 +1177,7 @@ class _TaskScreenState extends State<TaskScreen> {
                                             ),
                                             border: InputBorder.none,
                                             isDense: true,
-                                            contentPadding: EdgeInsets
-                                                .zero, // Clear engine layout clipping[cite: 12]
+                                            contentPadding: EdgeInsets.zero,
                                           ),
                                           onChanged: (v) async {
                                             task.description = v;
@@ -1177,7 +1206,6 @@ class _TaskScreenState extends State<TaskScreen> {
                                         ),
                                       ),
 
-                                      // LINE 5 ONWARDS: Subtasks Relational Cards Hierarchy Loop[cite: 12]
                                       FutureBuilder<List<SubTask>>(
                                         future: DBHelper.getSubTasks(task.id!),
                                         builder: (context, snapshot) {
@@ -1247,22 +1275,19 @@ class _TaskScreenState extends State<TaskScreen> {
                                                                           .stretch,
                                                                   children: [
                                                                     Expanded(
-                                                                      child:
-                                                                          Container(
+                                                                      child: Container(
                                                                         color:
                                                                             categoryColor,
                                                                       ),
                                                                     ),
                                                                     Expanded(
-                                                                      child:
-                                                                          Container(
+                                                                      child: Container(
                                                                         color:
                                                                             subcategoryColor,
                                                                       ),
                                                                     ),
                                                                     Expanded(
-                                                                      child:
-                                                                          Container(
+                                                                      child: Container(
                                                                         color:
                                                                             urgencyColor,
                                                                       ),
@@ -1420,22 +1445,19 @@ class _TaskScreenState extends State<TaskScreen> {
                                                                         .stretch,
                                                                 children: [
                                                                   Expanded(
-                                                                    child:
-                                                                        Container(
+                                                                    child: Container(
                                                                       color:
                                                                           categoryColor,
                                                                     ),
                                                                   ),
                                                                   Expanded(
-                                                                    child:
-                                                                        Container(
+                                                                    child: Container(
                                                                       color:
                                                                           subcategoryColor,
                                                                     ),
                                                                   ),
                                                                   Expanded(
-                                                                    child:
-                                                                        Container(
+                                                                    child: Container(
                                                                       color:
                                                                           urgencyColor,
                                                                     ),
@@ -1895,22 +1917,31 @@ class _TaskScreenState extends State<TaskScreen> {
               textInputAction: TextInputAction.next,
               decoration: _buildFormInputDecoration('Task title'),
               onSubmitted: (v) async {
-                String titleText = v.trim();
+                final titleText = v.trim();
                 if (titleText.isNotEmpty) {
-                  int autoCompleteBit = 0;
-                  if (titleText.endsWith('!!')) {
-                    titleText = titleText
-                        .substring(0, titleText.length - 2)
-                        .trim();
-                    autoCompleteBit = 1;
-                  }
                   task.title = titleText;
-                  task.isCompleted = autoCompleteBit;
                   task.description = (_editingDescController?.text ?? '')
                       .trim();
                   await DBHelper.updateTask(task);
+
+                  Task newTask = Task(
+                    title: '',
+                    category: task.category,
+                    subcategory: task.subcategory,
+                    urgency: task.urgency,
+                  );
+                  final newId = await DBHelper.insertTask(newTask);
                   await _refresh();
-                  _closeInlineEditor();
+                  setState(() {
+                    _editingTaskId = newId;
+                    _editingTitleController = TextEditingController(text: '');
+                    _editingDescController = TextEditingController(text: '');
+                    _editingTitleFocus = FocusNode();
+                    _editingDescFocus = FocusNode();
+                  });
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _editingTitleFocus?.requestFocus();
+                  });
                 }
               },
             ),
@@ -2463,7 +2494,8 @@ class _TaskScreenState extends State<TaskScreen> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: DropdownButtonFormField<String>(
-                                  initialValue: dynamicUrgency ??
+                                  initialValue:
+                                      dynamicUrgency ??
                                       (cleanUserUrgencies.contains(selectedUrg)
                                           ? selectedUrg
                                           : cleanUserUrgencies.first),
@@ -2483,25 +2515,26 @@ class _TaskScreenState extends State<TaskScreen> {
                                                 color: Colors.white60,
                                               ),
                                             ),
-                                          )
+                                          ),
                                         ]
                                       : cleanUserUrgencies
-                                          .map(
-                                            (e) => DropdownMenuItem(
-                                              value: e,
-                                              child: Text(
-                                                e,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  color: e.startsWith('+')
-                                                      ? Colors.green
-                                                      : Colors.white,
+                                            .map(
+                                              (e) => DropdownMenuItem(
+                                                value: e,
+                                                child: Text(
+                                                  e,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: e.startsWith('+')
+                                                        ? Colors.green
+                                                        : Colors.white,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          )
-                                          .toList(),
+                                            )
+                                            .toList(),
                                   onChanged: dynamicUrgency != null
                                       ? null
                                       : (v) {
@@ -2511,7 +2544,9 @@ class _TaskScreenState extends State<TaskScreen> {
                                               selectedUrg,
                                             );
                                           } else {
-                                            setModalState(() => selectedUrg = v!);
+                                            setModalState(
+                                              () => selectedUrg = v!,
+                                            );
                                           }
                                         },
                                 ),
@@ -2750,7 +2785,6 @@ class _TaskScreenState extends State<TaskScreen> {
                           ),
                           const SizedBox(height: 8),
 
-                          // Space-Between width-adaptive capsules inside task creation bottom sheet
                           Row(
                             children: [
                               Expanded(
@@ -3015,7 +3049,6 @@ class _TaskScreenState extends State<TaskScreen> {
     ).then((_) => _refresh());
   }
 
-  // CORE COMPONENT: Capsule indicators for independent child elements
   Widget _buildSubTaskReminderPill({
     required IconData icon,
     required bool isActive,
@@ -3025,13 +3058,10 @@ class _TaskScreenState extends State<TaskScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 10,
-          vertical: 4,
-        ), // Expanded to form capsule bounds
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           color: isActive ? activeColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(20), // Enforce pure capsule theme
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: activeColor, width: 1),
         ),
         child: Icon(
@@ -3043,7 +3073,6 @@ class _TaskScreenState extends State<TaskScreen> {
     );
   }
 
-  // CORE COMPONENT: Capsule indicators for independent child urgencies
   Widget _buildSubTaskUrgencyPill(SubTask sub, StateSetter setOverlayState) {
     final color = _getUrgencyColor(sub.urgency);
     return GestureDetector(
@@ -3057,13 +3086,10 @@ class _TaskScreenState extends State<TaskScreen> {
         setOverlayState(() {});
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 10,
-          vertical: 4,
-        ), // Harmonized size metrics
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.25),
-          borderRadius: BorderRadius.circular(20), // Enforce pure capsule theme
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: color, width: 1),
         ),
         child: Row(
@@ -3139,5 +3165,32 @@ class _FilteredTasksScreenState extends State<FilteredTasksScreen> {
             .toList(),
       ),
     );
+  }
+}
+
+class CustomPopupMenuEntry<T> extends PopupMenuEntry<T> {
+  final double entryHeight;
+  final Widget child;
+
+  const CustomPopupMenuEntry({
+    super.key,
+    required this.entryHeight,
+    required this.child,
+  });
+
+  @override
+  double get height => entryHeight;
+
+  @override
+  bool represents(T? value) => false;
+
+  @override
+  State<CustomPopupMenuEntry<T>> createState() => _CustomPopupMenuEntryState<T>();
+}
+
+class _CustomPopupMenuEntryState<T> extends State<CustomPopupMenuEntry<T>> {
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
   }
 }
