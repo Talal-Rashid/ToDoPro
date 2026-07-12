@@ -514,8 +514,8 @@ class _TaskScreenState extends State<TaskScreen> {
           border: Border.all(color: activeColor, width: 1),
         ),
         child: Row(
-          mainAxisAlignment:
-              MainAxisAlignment.center, // Center contents within Expanded capsule
+          mainAxisAlignment: MainAxisAlignment
+              .center, // Center contents within Expanded capsule
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Icon(icon, size: 14, color: isActive ? Colors.black : activeColor),
@@ -659,9 +659,10 @@ class _TaskScreenState extends State<TaskScreen> {
                                           // Category Capsule
                                           Expanded(
                                             child: Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                vertical: 8,
-                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 8,
+                                                  ),
                                               decoration: BoxDecoration(
                                                 color: _getDeterministicColor(
                                                   task.category,
@@ -677,26 +678,30 @@ class _TaskScreenState extends State<TaskScreen> {
                                                 ),
                                               ),
                                               child: Row(
-                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
                                                 children: [
                                                   Icon(
                                                     Icons.folder_outlined,
                                                     size: 12,
-                                                    color: _getDeterministicColor(
-                                                      task.category,
-                                                    ),
+                                                    color:
+                                                        _getDeterministicColor(
+                                                          task.category,
+                                                        ),
                                                   ),
                                                   const SizedBox(width: 4),
                                                   Flexible(
                                                     child: Text(
                                                       task.category,
-                                                      overflow: TextOverflow.ellipsis,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                       maxLines: 1,
                                                       style: const TextStyle(
                                                         fontSize: 12,
                                                         color: Colors
                                                             .white, // Set font color cleanly to white
-                                                        fontWeight: FontWeight.bold,
+                                                        fontWeight:
+                                                            FontWeight.bold,
                                                       ),
                                                     ),
                                                   ),
@@ -709,11 +714,13 @@ class _TaskScreenState extends State<TaskScreen> {
                                           // Subcategory Capsule (Displays persistent 'None' placeholder when blank)
                                           Expanded(
                                             child: Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                vertical: 8,
-                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 8,
+                                                  ),
                                               decoration: BoxDecoration(
-                                                color: task.subcategory.isNotEmpty
+                                                color:
+                                                    task.subcategory.isNotEmpty
                                                     ? _getDeterministicColor(
                                                         task.subcategory,
                                                       ).withValues(alpha: 0.15)
@@ -725,7 +732,9 @@ class _TaskScreenState extends State<TaskScreen> {
                                                 ), // Restored capsule shape[cite: 12]
                                                 border: Border.all(
                                                   color:
-                                                      task.subcategory.isNotEmpty
+                                                      task
+                                                          .subcategory
+                                                          .isNotEmpty
                                                       ? _getDeterministicColor(
                                                           task.subcategory,
                                                         )
@@ -735,7 +744,8 @@ class _TaskScreenState extends State<TaskScreen> {
                                                 ),
                                               ),
                                               child: Row(
-                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
                                                 children: [
                                                   Icon(
                                                     Icons.layers_outlined,
@@ -752,10 +762,13 @@ class _TaskScreenState extends State<TaskScreen> {
                                                   const SizedBox(width: 4),
                                                   Flexible(
                                                     child: Text(
-                                                      task.subcategory.isNotEmpty
+                                                      task
+                                                              .subcategory
+                                                              .isNotEmpty
                                                           ? task.subcategory
                                                           : "None",
-                                                      overflow: TextOverflow.ellipsis,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                       maxLines: 1,
                                                       style: TextStyle(
                                                         fontSize: 12,
@@ -766,7 +779,8 @@ class _TaskScreenState extends State<TaskScreen> {
                                                             ? Colors.white
                                                             : Colors
                                                                   .grey, // Clear indicator text
-                                                        fontWeight: FontWeight.bold,
+                                                        fontWeight:
+                                                            FontWeight.bold,
                                                       ),
                                                     ),
                                                   ),
@@ -779,9 +793,10 @@ class _TaskScreenState extends State<TaskScreen> {
                                           // Urgency Capsule
                                           Expanded(
                                             child: Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                vertical: 8,
-                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 8,
+                                                  ),
                                               decoration: BoxDecoration(
                                                 color: _getUrgencyColor(
                                                   task.urgency,
@@ -797,7 +812,8 @@ class _TaskScreenState extends State<TaskScreen> {
                                                 ),
                                               ),
                                               child: Row(
-                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
                                                 children: [
                                                   Icon(
                                                     Icons.star_outline,
@@ -810,13 +826,15 @@ class _TaskScreenState extends State<TaskScreen> {
                                                   Flexible(
                                                     child: Text(
                                                       task.urgency,
-                                                      overflow: TextOverflow.ellipsis,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                       maxLines: 1,
                                                       style: const TextStyle(
                                                         fontSize: 12,
                                                         color: Colors
                                                             .white, // Set font color cleanly to white
-                                                        fontWeight: FontWeight.bold,
+                                                        fontWeight:
+                                                            FontWeight.bold,
                                                       ),
                                                     ),
                                                   ),
@@ -835,7 +853,8 @@ class _TaskScreenState extends State<TaskScreen> {
                                             child: _buildStatusMatrixPill(
                                               icon: Icons.calendar_month,
                                               label: "Calendar",
-                                              isActive: task.syncToCalendar == 1,
+                                              isActive:
+                                                  task.syncToCalendar == 1,
                                               activeColor: Colors.blueAccent,
                                               onTap: () async {
                                                 task.syncToCalendar =
@@ -852,7 +871,8 @@ class _TaskScreenState extends State<TaskScreen> {
                                             child: _buildStatusMatrixPill(
                                               icon: Icons.notifications_active,
                                               label: "Notify",
-                                              isActive: task.setNotification == 1,
+                                              isActive:
+                                                  task.setNotification == 1,
                                               activeColor: Colors.amber,
                                               onTap: () async {
                                                 task.setNotification =
@@ -872,9 +892,8 @@ class _TaskScreenState extends State<TaskScreen> {
                                               isActive: task.setAlarm == 1,
                                               activeColor: Colors.redAccent,
                                               onTap: () async {
-                                                task.setAlarm = task.setAlarm == 1
-                                                    ? 0
-                                                    : 1;
+                                                task.setAlarm =
+                                                    task.setAlarm == 1 ? 0 : 1;
                                                 await DBHelper.updateTask(task);
                                                 setOverlayState(() {});
                                               },
@@ -898,10 +917,11 @@ class _TaskScreenState extends State<TaskScreen> {
                                             },
                                             child: Container(
                                               width: double.infinity,
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 14,
-                                                vertical: 8,
-                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 14,
+                                                    vertical: 8,
+                                                  ),
                                               decoration: BoxDecoration(
                                                 color: hasRepeat
                                                     ? Colors.purpleAccent
@@ -928,7 +948,7 @@ class _TaskScreenState extends State<TaskScreen> {
                                                         color: hasRepeat
                                                             ? Colors.black
                                                             : Colors
-                                                                .purpleAccent,
+                                                                  .purpleAccent,
                                                       ),
                                                       const SizedBox(width: 6),
                                                       Text(
@@ -938,7 +958,7 @@ class _TaskScreenState extends State<TaskScreen> {
                                                           fontWeight: hasRepeat
                                                               ? FontWeight.bold
                                                               : FontWeight
-                                                                  .normal,
+                                                                    .normal,
                                                           color: hasRepeat
                                                               ? Colors.black
                                                               : Colors.white,
@@ -949,8 +969,7 @@ class _TaskScreenState extends State<TaskScreen> {
                                                   Icon(
                                                     isRepeatDropdownOpen
                                                         ? Icons.arrow_drop_up
-                                                        : Icons
-                                                            .arrow_drop_down,
+                                                        : Icons.arrow_drop_down,
                                                     size: 18,
                                                     color: hasRepeat
                                                         ? Colors.black
@@ -982,88 +1001,81 @@ class _TaskScreenState extends State<TaskScreen> {
                                                 mainAxisSize: MainAxisSize.min,
                                                 children:
                                                     [
-                                                          'None',
-                                                          'Daily',
-                                                          'Weekly',
-                                                          'Biweekly',
-                                                          'Monthly',
-                                                        ].map((String val) {
-                                                          final isSelected =
-                                                              task.repeatType ==
-                                                              val;
-                                                          return InkWell(
-                                                            onTap: () async {
-                                                              task.repeatType =
-                                                                  val;
-                                                              task.isRepeating =
-                                                                  val == 'None'
-                                                                  ? 0
-                                                                  : 1;
-                                                              await DBHelper
-                                                                  .updateTask(
-                                                                    task,
-                                                                  );
-                                                              setOverlayState(() {
-                                                                isRepeatDropdownOpen =
-                                                                    false;
-                                                              });
-                                                            },
-                                                            child: Container(
-                                                              width: double
-                                                                  .infinity,
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .symmetric(
-                                                                    horizontal:
-                                                                        16,
-                                                                    vertical:
-                                                                        10,
-                                                                  ),
-                                                              color: isSelected
-                                                                  ? Colors
-                                                                      .purpleAccent
-                                                                      .withValues(
-                                                                        alpha:
-                                                                            0.15,
-                                                                      )
-                                                                  : Colors
-                                                                      .transparent,
-                                                              child: Row(
-                                                                mainAxisAlignment:
-                                                                    MainAxisAlignment
-                                                                        .spaceBetween,
-                                                                children: [
-                                                                  Text(
-                                                                    val,
-                                                                    style:
-                                                                        TextStyle(
-                                                                          color:
-                                                                              isSelected
-                                                                              ? Colors
-                                                                                  .purpleAccent
-                                                                              : Colors
-                                                                                  .white,
-                                                                          fontWeight:
-                                                                              isSelected
-                                                                              ? FontWeight
-                                                                                  .bold
-                                                                              : FontWeight
-                                                                                  .normal,
-                                                                        ),
-                                                                  ),
-                                                                  if (isSelected)
-                                                                    const Icon(
-                                                                      Icons
-                                                                          .check,
-                                                                      color: Colors
-                                                                          .purpleAccent,
-                                                                      size: 16,
-                                                                    ),
-                                                                ],
-                                                              ),
-                                                            ),
+                                                      'None',
+                                                      'Daily',
+                                                      'Weekly',
+                                                      'Biweekly',
+                                                      'Monthly',
+                                                    ].map((String val) {
+                                                      final isSelected =
+                                                          task.repeatType ==
+                                                          val;
+                                                      return InkWell(
+                                                        onTap: () async {
+                                                          task.repeatType = val;
+                                                          task.isRepeating =
+                                                              val == 'None'
+                                                              ? 0
+                                                              : 1;
+                                                          await DBHelper.updateTask(
+                                                            task,
                                                           );
-                                                        }).toList(),
+                                                          setOverlayState(() {
+                                                            isRepeatDropdownOpen =
+                                                                false;
+                                                          });
+                                                        },
+                                                        child: Container(
+                                                          width:
+                                                              double.infinity,
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 16,
+                                                                vertical: 10,
+                                                              ),
+                                                          color: isSelected
+                                                              ? Colors
+                                                                    .purpleAccent
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.15,
+                                                                    )
+                                                              : Colors
+                                                                    .transparent,
+                                                          child: Row(
+                                                            mainAxisAlignment:
+                                                                MainAxisAlignment
+                                                                    .spaceBetween,
+                                                            children: [
+                                                              Text(
+                                                                val,
+                                                                style: TextStyle(
+                                                                  color:
+                                                                      isSelected
+                                                                      ? Colors
+                                                                            .purpleAccent
+                                                                      : Colors
+                                                                            .white,
+                                                                  fontWeight:
+                                                                      isSelected
+                                                                      ? FontWeight
+                                                                            .bold
+                                                                      : FontWeight
+                                                                            .normal,
+                                                                ),
+                                                              ),
+                                                              if (isSelected)
+                                                                const Icon(
+                                                                  Icons.check,
+                                                                  color: Colors
+                                                                      .purpleAccent,
+                                                                  size: 16,
+                                                                ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      );
+                                                    }).toList(),
                                               ),
                                             ),
                                           ],
@@ -1169,11 +1181,12 @@ class _TaskScreenState extends State<TaskScreen> {
                                       FutureBuilder<List<SubTask>>(
                                         future: DBHelper.getSubTasks(task.id!),
                                         builder: (context, snapshot) {
-                                          if (!snapshot.hasData)
+                                          if (!snapshot.hasData) {
                                             return const Center(
                                               child:
                                                   CircularProgressIndicator(),
                                             );
+                                          }
                                           final subtasksList = snapshot.data!;
 
                                           return Column(
@@ -1226,27 +1239,36 @@ class _TaskScreenState extends State<TaskScreen> {
                                                                 CrossAxisAlignment
                                                                     .stretch,
                                                             children: [
-                                                              Row(
-                                                                mainAxisSize:
-                                                                    MainAxisSize
-                                                                        .min,
-                                                                children: [
-                                                                  Container(
-                                                                    width: 3,
-                                                                    color:
-                                                                        categoryColor,
-                                                                  ),
-                                                                  Container(
-                                                                    width: 3,
-                                                                    color:
-                                                                        subcategoryColor,
-                                                                  ),
-                                                                  Container(
-                                                                    width: 3,
-                                                                    color:
-                                                                        urgencyColor,
-                                                                  ),
-                                                                ],
+                                                              SizedBox(
+                                                                width: 18,
+                                                                child: Row(
+                                                                  crossAxisAlignment:
+                                                                      CrossAxisAlignment
+                                                                          .stretch,
+                                                                  children: [
+                                                                    Expanded(
+                                                                      child:
+                                                                          Container(
+                                                                        color:
+                                                                            categoryColor,
+                                                                      ),
+                                                                    ),
+                                                                    Expanded(
+                                                                      child:
+                                                                          Container(
+                                                                        color:
+                                                                            subcategoryColor,
+                                                                      ),
+                                                                    ),
+                                                                    Expanded(
+                                                                      child:
+                                                                          Container(
+                                                                        color:
+                                                                            urgencyColor,
+                                                                      ),
+                                                                    ),
+                                                                  ],
+                                                                ),
                                                               ),
                                                               Expanded(
                                                                 child: Padding(
@@ -1390,27 +1412,36 @@ class _TaskScreenState extends State<TaskScreen> {
                                                               CrossAxisAlignment
                                                                   .stretch,
                                                           children: [
-                                                            Row(
-                                                              mainAxisSize:
-                                                                  MainAxisSize
-                                                                      .min,
-                                                              children: [
-                                                                Container(
-                                                                  width: 3,
-                                                                  color:
-                                                                      categoryColor,
-                                                                ),
-                                                                Container(
-                                                                  width: 3,
-                                                                  color:
-                                                                      subcategoryColor,
-                                                                ),
-                                                                Container(
-                                                                  width: 3,
-                                                                  color:
-                                                                      urgencyColor,
-                                                                ),
-                                                              ],
+                                                            SizedBox(
+                                                              width: 18,
+                                                              child: Row(
+                                                                crossAxisAlignment:
+                                                                    CrossAxisAlignment
+                                                                        .stretch,
+                                                                children: [
+                                                                  Expanded(
+                                                                    child:
+                                                                        Container(
+                                                                      color:
+                                                                          categoryColor,
+                                                                    ),
+                                                                  ),
+                                                                  Expanded(
+                                                                    child:
+                                                                        Container(
+                                                                      color:
+                                                                          subcategoryColor,
+                                                                    ),
+                                                                  ),
+                                                                  Expanded(
+                                                                    child:
+                                                                        Container(
+                                                                      color:
+                                                                          urgencyColor,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
                                                             ),
                                                             Expanded(
                                                               child: Padding(
@@ -1462,10 +1493,11 @@ class _TaskScreenState extends State<TaskScreen> {
                                                                                 );
                                                                                 if (checkedParentState.isCompleted ==
                                                                                     1) {
-                                                                                  if (dialogCtx.mounted)
+                                                                                  if (dialogCtx.mounted) {
                                                                                     Navigator.pop(
                                                                                       dialogCtx,
                                                                                     );
+                                                                                  }
                                                                                 } else {
                                                                                   setOverlayState(
                                                                                     () {},
@@ -1931,13 +1963,16 @@ class _TaskScreenState extends State<TaskScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(width: 4, color: categoryColor),
-                Container(width: 4, color: subcategoryColor),
-                Container(width: 4, color: urgencyColor),
-              ],
+            SizedBox(
+              width: 24,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: Container(color: categoryColor)),
+                  Expanded(child: Container(color: subcategoryColor)),
+                  Expanded(child: Container(color: urgencyColor)),
+                ],
+              ),
             ),
             Expanded(
               child: InkWell(
@@ -2219,8 +2254,9 @@ class _TaskScreenState extends State<TaskScreen> {
                   (s) => s != 'None' && s != '+ Add New Subcategory',
                 ),
               ];
-              if (!items.contains(selectedSubCat))
+              if (!items.contains(selectedSubCat)) {
                 items.insert(1, selectedSubCat);
+              }
               items.add("+ Add New Subcategory");
               return items;
             }
@@ -2287,12 +2323,13 @@ class _TaskScreenState extends State<TaskScreen> {
                 }
               } else {
                 setModalState(() {
-                  if (type == 'Category')
+                  if (type == 'Category') {
                     selectedCat = currentVal;
-                  else if (type == 'Urgency')
+                  } else if (type == 'Urgency') {
                     selectedUrg = currentVal;
-                  else
+                  } else {
                     selectedSubCat = currentVal;
+                  }
                 });
               }
             }
@@ -2539,8 +2576,9 @@ class _TaskScreenState extends State<TaskScreen> {
                                 firstDate: DateTime(2025),
                                 lastDate: DateTime(2035),
                               );
-                              if (datePicked != null)
+                              if (datePicked != null) {
                                 setModalState(() => deadlineDate = datePicked);
+                              }
                             },
                           ),
                           if (deadlineDate != null)
@@ -2574,10 +2612,11 @@ class _TaskScreenState extends State<TaskScreen> {
                                   context: context,
                                   initialTime: TimeOfDay.now(),
                                 );
-                                if (timePicked != null)
+                                if (timePicked != null) {
                                   setModalState(
                                     () => deadlineTime = timePicked,
                                   );
+                                }
                               },
                             ),
                           const Divider(),
@@ -2606,7 +2645,7 @@ class _TaskScreenState extends State<TaskScreen> {
                                   SizedBox(
                                     width: 140,
                                     child: DropdownButtonFormField<String>(
-                                      value: selectedRepeat == 'None'
+                                      initialValue: selectedRepeat == 'None'
                                           ? 'Daily'
                                           : selectedRepeat,
                                       decoration: _buildFormInputDecoration(
@@ -2712,8 +2751,9 @@ class _TaskScreenState extends State<TaskScreen> {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: GestureDetector(
-                                  onTap: () =>
-                                      setModalState(() => setNotify = !setNotify),
+                                  onTap: () => setModalState(
+                                    () => setNotify = !setNotify,
+                                  ),
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 8,
@@ -2889,8 +2929,9 @@ class _TaskScreenState extends State<TaskScreen> {
                                       await DBHelper.updateTask(t);
                                     }
                                     _refresh();
-                                    if (sheetContext.mounted)
+                                    if (sheetContext.mounted) {
                                       Navigator.pop(sheetContext);
+                                    }
                                   }
                                 : null,
                             child: Text(
