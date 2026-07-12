@@ -282,7 +282,19 @@ class DBHelper {
   }
 
   static String calculateUrgencyFromDeadline(String deadlineStr, String currentUrgency) {
-    final targetDate = DateTime.parse(deadlineStr);
+    if (deadlineStr.isEmpty) {
+      if (currentUrgency.startsWith('⏰')) {
+        return 'Today';
+      }
+      return currentUrgency;
+    }
+    final targetDate = DateTime.tryParse(deadlineStr);
+    if (targetDate == null) {
+      if (currentUrgency.startsWith('⏰')) {
+        return 'Today';
+      }
+      return currentUrgency;
+    }
     final difference = targetDate.difference(DateTime.now());
     if (difference.isNegative || difference.inHours <= 6) {
       return '⏰ Within 6 Hours';
@@ -303,7 +315,7 @@ class DBHelper {
 
   static Future<int> insertTask(Task task) async {
     final db = await initDB();
-    if (task.deadline != null) {
+    if (task.deadline != null && task.deadline!.isNotEmpty) {
       task.urgency = calculateUrgencyFromDeadline(task.deadline!, task.urgency);
     }
     return await db.insert('tasks', task.toMap());
@@ -321,34 +333,36 @@ class DBHelper {
       String urgency = m['urgency'] ?? '';
       final deadline = m['deadline'];
 
-      if (deadline != null) {
-        final targetDate = DateTime.parse(deadline);
-        final difference = targetDate.difference(now);
-        String calculatedUrgency = urgency;
-        if (difference.isNegative || difference.inHours <= 6) {
-          calculatedUrgency = '⏰ Within 6 Hours';
-        } else if (difference.inHours <= 12) {
-          calculatedUrgency = '⏰ Within 12 Hours';
-        } else if (difference.inHours <= 24) {
-          calculatedUrgency = '⏰ Within 24 Hours';
-        } else if (difference.inDays <= 7) {
-          calculatedUrgency = '⏰ Within 1 Week';
-        } else if (difference.inDays <= 30) {
-          calculatedUrgency = '⏰ Within 1 Month';
-        } else {
-          if (urgency.startsWith('⏰')) {
-            calculatedUrgency = 'Today';
+      if (deadline != null && deadline.isNotEmpty) {
+        final targetDate = DateTime.tryParse(deadline);
+        if (targetDate != null) {
+          final difference = targetDate.difference(now);
+          String calculatedUrgency = urgency;
+          if (difference.isNegative || difference.inHours <= 6) {
+            calculatedUrgency = '⏰ Within 6 Hours';
+          } else if (difference.inHours <= 12) {
+            calculatedUrgency = '⏰ Within 12 Hours';
+          } else if (difference.inHours <= 24) {
+            calculatedUrgency = '⏰ Within 24 Hours';
+          } else if (difference.inDays <= 7) {
+            calculatedUrgency = '⏰ Within 1 Week';
+          } else if (difference.inDays <= 30) {
+            calculatedUrgency = '⏰ Within 1 Month';
+          } else {
+            if (urgency.startsWith('⏰')) {
+              calculatedUrgency = 'Today';
+            }
           }
-        }
 
-        if (calculatedUrgency != urgency) {
-          urgency = calculatedUrgency;
-          await db.update(
-            'tasks',
-            {'urgency': urgency},
-            where: 'id = ?',
-            whereArgs: [m['id']],
-          );
+          if (calculatedUrgency != urgency) {
+            urgency = calculatedUrgency;
+            await db.update(
+              'tasks',
+              {'urgency': urgency},
+              where: 'id = ?',
+              whereArgs: [m['id']],
+            );
+          }
         }
       }
 
@@ -373,7 +387,7 @@ class DBHelper {
 
   static Future<void> updateTask(Task task) async {
     final db = await initDB();
-    if (task.deadline != null) {
+    if (task.deadline != null && task.deadline!.isNotEmpty) {
       task.urgency = calculateUrgencyFromDeadline(task.deadline!, task.urgency);
     }
     await db.update(
