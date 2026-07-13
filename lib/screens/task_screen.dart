@@ -332,35 +332,108 @@ class _TaskScreenState extends State<TaskScreen> {
                         ],
                       ),
                     ),
-                    ...entry.value.map((task) => _buildTaskTile(task)),
-                    if (_editingTaskId == null)
-                      ListTile(
-                        leading: const Icon(
-                          Icons.add_circle_outline,
-                          color: Colors.green,
-                        ),
-                        title: const Text(
-                          'Add new task...',
-                          style: TextStyle(color: Colors.green),
-                        ),
-                        onTap: () async {
-                          Task t = Task(
-                            title: '',
-                            category: groupMode == 'Urgency'
-                                ? 'Study'
-                                : groupKey,
-                            urgency: groupMode == 'Urgency'
-                                ? groupKey
-                                : 'Today',
-                          );
-                          final id = await DBHelper.insertTask(t);
-                          t.id = id;
-                          await _refresh();
-                          _startInlineEdit(t);
-                        },
-                      )
-                    else
-                      const SizedBox.shrink(),
+                    if (groupMode == 'Urgency') ...[
+                      ...entry.value.map((task) => _buildTaskTile(task)),
+                      if (_editingTaskId == null)
+                        ListTile(
+                          leading: const Icon(
+                            Icons.add_circle_outline,
+                            color: Colors.green,
+                          ),
+                          title: const Text(
+                            'Add new task...',
+                            style: TextStyle(color: Colors.green),
+                          ),
+                          onTap: () async {
+                            Task t = Task(
+                              title: '',
+                              category: 'Study',
+                              urgency: groupKey,
+                            );
+                            final id = await DBHelper.insertTask(t);
+                            t.id = id;
+                            await _refresh();
+                            _startInlineEdit(t);
+                          },
+                        )
+                      else
+                        const SizedBox.shrink(),
+                    ] else ...[
+                      // Category mode: group tasks inside this category by subcategory
+                      ...() {
+                        Map<String, List<Task>> subcategoryGroups = {};
+                        for (var task in entry.value) {
+                          String subKey = task.subcategory.isEmpty ? '' : task.subcategory;
+                          if (!subcategoryGroups.containsKey(subKey)) {
+                            subcategoryGroups[subKey] = [];
+                          }
+                          subcategoryGroups[subKey]!.add(task);
+                        }
+
+                        final subKeys = subcategoryGroups.keys.toList();
+                        subKeys.sort((a, b) {
+                          if (a.isEmpty) return -1;
+                          if (b.isEmpty) return 1;
+                          return a.compareTo(b);
+                        });
+
+                        return subKeys.expand((subKey) {
+                          final subTasks = subcategoryGroups[subKey]!;
+                          return [
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                left: 28.0,
+                                top: 10.0,
+                                bottom: 4.0,
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.subdirectory_arrow_right, size: 14, color: Colors.grey),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    subKey.isEmpty ? 'GENERAL' : subKey.toUpperCase(),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey,
+                                      letterSpacing: 1.1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            ...subTasks.map((task) => _buildTaskTile(task)),
+                            if (_editingTaskId == null)
+                              ListTile(
+                                contentPadding: const EdgeInsets.only(left: 28.0),
+                                leading: const Icon(
+                                  Icons.add_circle_outline,
+                                  color: Colors.green,
+                                  size: 20,
+                                ),
+                                title: Text(
+                                  'Add task to ${subKey.isEmpty ? "General" : subKey}...',
+                                  style: const TextStyle(color: Colors.green, fontSize: 13),
+                                ),
+                                onTap: () async {
+                                  Task t = Task(
+                                    title: '',
+                                    category: groupKey,
+                                    subcategory: subKey,
+                                    urgency: 'Today',
+                                  );
+                                  final id = await DBHelper.insertTask(t);
+                                  t.id = id;
+                                  await _refresh();
+                                  _startInlineEdit(t);
+                                },
+                              )
+                            else
+                              const SizedBox.shrink(),
+                          ];
+                        }).toList();
+                      }(),
+                    ],
                   ],
                 );
               }).toList(),
