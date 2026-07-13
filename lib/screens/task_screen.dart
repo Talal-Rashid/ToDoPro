@@ -53,6 +53,27 @@ class _TaskScreenState extends State<TaskScreen> {
     });
   }
 
+  void _purgeVisibleCompletedTasks(Map<String, List<Task>> currentGroups) async {
+    int totalPurged = 0;
+    // Iterate through current workspace view
+    for (var tasks in currentGroups.values) {
+      for (var task in tasks) {
+        if (task.isCompleted == 1 && task.id != null) {
+          await DBHelper.deleteTask(task.id!);
+          totalPurged++;
+        }
+      }
+    }
+    if (totalPurged > 0) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("🧹 Cleared $totalPurged completed tasks.")),
+        );
+      }
+      _refresh();
+    }
+  }
+
   int _getWeight(String urgency) {
     return urgencyWeights[urgency] ?? 99;
   }
@@ -194,33 +215,8 @@ class _TaskScreenState extends State<TaskScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: isSearching
-            ? TextField(
-                autofocus: true,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  hintText: "Search tasks...",
-                  border: InputBorder.none,
-                ),
-                onChanged: (v) => setState(() => searchQuery = v),
-              )
-            : const Text("TodoPro Tasks"),
+        title: const Text("TodoPro Tasks"),
         actions: [
-          IconButton(
-            icon: Icon(isSearching ? Icons.close : Icons.search),
-            onPressed: () => setState(() {
-              isSearching = !isSearching;
-              if (!isSearching) searchQuery = "";
-            }),
-          ),
-          IconButton(
-            icon: Icon(
-              Icons.filter_alt,
-              color: isFilteredActive ? Colors.amberAccent : Colors.white,
-            ),
-            tooltip: 'Filter Context Space',
-            onPressed: () => _showFilterModalSheet(context),
-          ),
           TextButton.icon(
             icon: const Icon(Icons.swap_horiz, color: Colors.blueAccent),
             label: Text(groupMode),
@@ -243,8 +239,58 @@ class _TaskScreenState extends State<TaskScreen> {
           ),
         ],
       ),
-      body: Row(
+      body: Column(
         children: [
+          // SECONDARY TOOLBAR: Search, Filter, and Bulk Delete
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            color: const Color(0xFF141414),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.search, size: 18, color: Colors.grey),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            style: const TextStyle(fontSize: 14, color: Colors.white),
+                            decoration: const InputDecoration(
+                              hintText: "Search workspace...",
+                              hintStyle: TextStyle(color: Colors.white38),
+                              border: InputBorder.none,
+                              isDense: true,
+                            ),
+                            onChanged: (v) => setState(() => searchQuery = v),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: Icon(
+                    Icons.filter_alt,
+                    color: isFilteredActive ? Colors.amberAccent : Colors.blueAccent,
+                  ),
+                  onPressed: () => _showFilterModalSheet(context),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.cleaning_services, color: Colors.redAccent),
+                  tooltip: 'Purge completed tasks in view',
+                  onPressed: () => _purgeVisibleCompletedTasks(groupedTasks),
+                ),
+              ],
+            ),
+          ),
           Expanded(
             child: ListView(
               controller: _scrollController,
