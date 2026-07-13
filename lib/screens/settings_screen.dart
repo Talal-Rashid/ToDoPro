@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import '../db_helper.dart';
 
-class ManageTaxonomies extends StatefulWidget {
-  const ManageTaxonomies({super.key});
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({super.key});
 
   @override
-  State<ManageTaxonomies> createState() => _ManageTaxonomiesState();
+  State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _ManageTaxonomiesState extends State<ManageTaxonomies> {
+class _SettingsScreenState extends State<SettingsScreen> {
   List<String> categories = [];
   // Holds unified list of custom tiers mixed with system time anchors
   List<String> unifiedUrgencies = [];
@@ -338,7 +338,6 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
                           },
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: unifiedUrgencies.length,
-                          // NEW: Built-in instant-grab configuration
                           buildDefaultDragHandles: false,
                           itemBuilder: (context, index) {
                             final u = unifiedUrgencies[index];
@@ -392,7 +391,6 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
                                         _load();
                                       },
                                     ),
-                                  // FIXED: Wrap the listener in a premium raw pointer behavior interceptor
                                   isAnchor
                                       ? const Padding(
                                           padding: EdgeInsets.fromLTRB(
@@ -433,11 +431,10 @@ class _ManageTaxonomiesState extends State<ManageTaxonomies> {
                                                 14,
                                                 4,
                                                 14,
-                                              ), // Expanded touch canvas
+                                              ),
                                               child: Icon(
                                                 Icons.drag_handle,
-                                                color: Colors
-                                                    .blueAccent, // Color indicator update for premium feedback
+                                                color: Colors.blueAccent,
                                                 size: 22,
                                               ),
                                             ),
